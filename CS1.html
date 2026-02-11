@@ -1,558 +1,797 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Windows 10 Experience</title>
+    <title>Babylon.js Raycast Vehicle with City Environment</title>
     <style>
-        :root {
-            --win-blue: #0078d7;
-            --win-border: rgba(255, 255, 255, 0.4);
-            --win-bg-input: rgba(0, 0, 0, 0.45);
-            --win-grey-trans: rgba(128, 128, 128, 0.3);
-        }
-
-        * {
-            box-sizing: border-box;
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', 'Segoe UI Light', sans-serif;
+            font-family: Arial, sans-serif;
         }
-
-        body {
-            height: 100vh;
-            width: 100vw;
-            background: #000;
-            overflow: hidden;
-            color: white;
-        }
-
-        /* --- 1. 启动加载屏幕 (Loading Screen) --- */
-        #boot-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
+        #renderCanvas {
             width: 100%;
             height: 100%;
-            background: #0078d7;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            touch-action: none;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
             z-index: 100;
-            transition: opacity 1s ease;
         }
-
-        .win-loader {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            margin-bottom: 30px;
-        }
-
-        .dot {
+        #controls {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            animation: orbit 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-
-        .dot::after {
-            content: '';
-            position: absolute;
+            bottom: 20px;
             left: 50%;
-            top: 0;
             transform: translateX(-50%);
-            width: 7px;
-            height: 7px;
-            background: #fff;
-            border-radius: 50%;
-        }
-
-        .dot:nth-child(1) { animation-delay: 0.2s; }
-        .dot:nth-child(2) { animation-delay: 0.4s; }
-        .dot:nth-child(3) { animation-delay: 0.6s; }
-        .dot:nth-child(4) { animation-delay: 0.8s; }
-        .dot:nth-child(5) { animation-delay: 1.0s; }
-
-        .loading-text {
-            font-size: 24px;
-            font-weight: 350;
-            letter-spacing: 0.5px;
-        }
-
-        @keyframes orbit {
-            0% { transform: rotate(225deg); opacity: 1; animation-timing-function: ease-out; }
-            7% { transform: rotate(345deg); animation-timing-function: linear; }
-            30% { transform: rotate(455deg); animation-timing-function: ease-in-out; }
-            39% { transform: rotate(690deg); animation-timing-function: linear; }
-            70% { transform: rotate(815deg); opacity: 1; animation-timing-function: ease-out; }
-            75% { transform: rotate(945deg); opacity: 0; }
-            100% { transform: rotate(945deg); opacity: 0; }
-        }
-
-        /* --- 背景容器 --- */
-        .main-background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('win10.jpg') no-repeat center center fixed;
-            background-size: cover;
-        }
-
-        /* --- 2. 锁屏 (Lock Screen) --- */
-        #lock-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 0 0 50px 50px;
-            background: rgba(0,0,0,0.1);
-            transition: opacity 0.8s ease, visibility 0.8s;
-            cursor: pointer;
-        }
-
-        #lock-screen.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .time-display { font-size: 96px; font-weight: 300; line-height: 1; }
-        .date-display { font-size: 42px; font-weight: 300; margin-top: 10px; }
-
-        /* --- 3. 登录界面 (Login Screen) --- */
-        .login-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(0px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: backdrop-filter 0.8s ease, opacity 0.8s ease;
-            opacity: 0;
-            pointer-events: none;
-            padding-bottom: 100px;
-        }
-
-        body.unlocked .login-overlay {
-            backdrop-filter: blur(25px) saturate(125%);
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .user-section { text-align: center; width: 320px; }
-        
-        .avatar-container {
-            width: 190px; height: 190px; margin: 0 auto 20px;
-            border-radius: 50%; background: #0078d7;
-            border: 1px solid var(--win-border);
-            display: flex; justify-content: center; align-items: center; 
-            overflow: hidden;
-        }
-        .avatar-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .display-name { font-size: 48px; font-weight: 300; margin-bottom: 24px; }
-
-        .input-group { margin-bottom: 10px; width: 100%; position: relative; }
-        input {
-            width: 100%; padding: 9px 12px; font-size: 15px; outline: none;
-            background: var(--win-bg-input); border: 2px solid var(--win-border); color: white;
-            transition: background 0.2s;
-        }
-        input:focus { background: white !important; color: black !important; border-color: white; }
-
-        .password-controls {
-            position: absolute; right: 0; top: 0; height: 100%;
-            display: flex; align-items: stretch;
-        }
-        .control-btn { background: transparent; border: none; width: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        
-        .eye-toggle svg { width: 18px; fill: white; opacity: 0.7; }
-        input:focus ~ .password-controls .eye-toggle svg { fill: black; }
-
-        .submit-arrow {
-            background: var(--win-grey-trans); border: 2px solid var(--win-border); border-left: 1px solid var(--win-border);
-            transition: all 0.2s;
-        }
-        .submit-arrow svg { width: 20px; fill: white; }
-        input:focus ~ .password-controls .submit-arrow { border-color: #ccc; }
-        input:focus ~ .password-controls .submit-arrow svg { fill: black; }
-
-        .submit-arrow:hover svg { fill: white !important; }
-
-        .domain-text { margin-top: 24px; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
-
-        .system-tray { position: absolute; bottom: 32px; right: 48px; display: flex; gap: 24px; }
-        .system-tray svg { width: 24px; height: 24px; fill: white; opacity: 0.85; }
-
-        /* --- 4. 登录后状态 --- */
-        #welcome-section {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-        }
-        .welcome-msg-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 10px;
-            height: 40px;
-        }
-        .welcome-text {
-            font-size: 28px;
-            font-weight: 300;
-        }
-        .welcome-loader {
-            transform: scale(0.65);
-            margin-bottom: 0;
-            width: 60px;
-            height: 60px;
-        }
-
-        /* --- 5. 蓝屏 (BSOD) & 碎裂故障 --- */
-        #bsod {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #0078d7;
             color: white;
-            z-index: 9999;
-            display: none;
-            flex-direction: column;
-            justify-content: flex-start;
-            padding: 8% 12%;
-            user-select: none;
-            cursor: none;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
         }
-        #bsod .sad-face { font-size: 120px; margin-bottom: 25px; }
-        #bsod .main-text { font-size: 26px; font-weight: 300; line-height: 1.4; margin-bottom: 20px; max-width: 850px; }
-        #bsod .percent { font-size: 26px; margin-bottom: 40px; }
-        #bsod .footer-section { display: flex; gap: 25px; align-items: flex-start; }
-        #bsod .qr-box { width: 120px; height: 120px; background: white; padding: 8px; display: flex; justify-content: center; align-items: center; }
-        #bsod .qr-box img { width: 100%; height: 100%; }
-        #bsod .info-text { font-size: 14px; line-height: 1.6; font-weight: 300; }
-
-        /* R键：蓝屏碎裂条 */
-        .glitch-bar {
-            position: fixed;
-            left: 0;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.4);
-            mix-blend-mode: overlay;
-            z-index: 10000;
-            pointer-events: none;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 200;
         }
-
-        /* --- 6. E键：严重花屏损坏 (Broken Screen) --- */
-        #broken-screen {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 20000;
-            background: 
-                /* 局部黑色死区 */
-                linear-gradient(90deg, transparent 10%, black 10%, black 15%, transparent 15%),
-                linear-gradient(90deg, transparent 80%, black 80%, black 95%, transparent 95%),
-                /* 彩色竖条 */
-                repeating-linear-gradient(
-                    90deg,
-                    #ff0000 0px, #ff0000 2px,
-                    #00ff00 2px, #00ff00 4px,
-                    #0000ff 4px, #0000ff 6px,
-                    #ffff00 6px, #ffff00 8px,
-                    #00ffff 8px, #00ffff 10px,
-                    #ff00ff 10px, #ff00ff 12px,
-                    #000000 12px, #000000 14px
-                );
-            animation: flicker-hard 0.05s infinite;
-            pointer-events: none;
-            mix-blend-mode: normal;
-        }
-
-        @keyframes flicker-hard {
-            0% { opacity: 0.95; transform: translateX(0); filter: hue-rotate(0deg); }
-            25% { opacity: 1; transform: translateX(-2px); filter: hue-rotate(90deg); }
-            50% { opacity: 0.8; transform: translateX(2px); filter: invert(1); }
-            75% { opacity: 1; transform: translateX(0); filter: hue-rotate(180deg); }
-            100% { opacity: 0.9; transform: translateX(-1px); }
-        }
-
     </style>
+    <!-- Babylon.js Core and Dependencies -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 </head>
 <body>
-
-    <div id="boot-loader">
-        <div class="win-loader">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-        </div>
-        <div class="loading-text">Patientez...</div>
+    <canvas id="renderCanvas"></canvas>
+    <div id="loading">Loading city environment...</div>
+    <div id="info" style="display: none;">
+        Speed: <span id="speed">0</span> km/h<br>
+        Wheels on Ground: <span id="wheels">4</span><br>
+        Collisions: <span id="collisions">0</span>
     </div>
-
-    <div id="bsod">
-        <div class="sad-face">:(</div>
-        <div class="main-text">
-            Votre ordinateur a rencontré un problème et doit redémarrer. Nous collectons simplement des informations relatives aux erreurs, puis nous allons redémarrer l'ordinateur pour vous.
-        </div>
-        <div class="percent">100% complété</div>
-        <div class="footer-section">
-            <div class="qr-box">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://windows.com/stopcode" alt="QR">
-            </div>
-            <div class="info-text">
-                Pour plus d'informations sur ce problème et les solutions possibles, consultez https://www.windows.com/stopcode<br><br>
-                Si vous appelez un technicien, donnez-lui ces informations :<br>
-                Code d'arrêt : <span style="font-weight: 600;">CRITICAL_PROCESS_DIED</span><br>
-                Élément ayant échoué : ntoskrnl.exe
-            </div>
-        </div>
+    <div id="controls" style="display: none;">
+        <strong>Controls:</strong><br>
+        W/S: Accelerate/Brake<br>
+        A/D: Steer Left/Right<br>
+        R: Reset Vehicle<br>
+        Space: Emergency Brake
     </div>
-
-    <div id="broken-screen"></div>
-
-    <div class="main-background">
-        <div id="lock-screen">
-            <div class="time-display" id="time">00:00</div>
-            <div class="date-display" id="date">Loading...</div>
-        </div>
-
-        <div class="login-overlay">
-            <div class="user-section" id="login-fields">
-                <div class="avatar-container">
-                    <img src="avatar.jpg" alt="Avatar">
-                </div>
-                <div class="display-name">Autre utilisateur</div>
-                <form id="loginForm">
-                    <div class="input-group">
-                        <input type="text" placeholder="Nom d'utilisateur" spellcheck="false">
-                    </div>
-                    <div class="input-group">
-                        <input type="password" id="passwordInput" placeholder="Mot de passe">
-                        <div class="password-controls">
-                            <button type="button" class="control-btn eye-toggle" id="togglePassword">
-                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                            </button>
-                            <button type="submit" class="control-btn submit-arrow">
-                                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                <div class="domain-text">Se connecter à : PED</div>
-            </div>
-
-            <div class="user-section" id="welcome-section">
-                <div class="avatar-container">
-                    <img src="avatar.jpg" alt="Avatar">
-                </div>
-                <div class="display-name">Zhou, Z</div>
-                <div class="welcome-msg-container">
-                    <div class="welcome-text">Bienvenue</div>
-                    <div class="win-loader welcome-loader">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="system-tray">
-                <svg viewBox="0 0 24 24"><path d="M15.91 13.34L12 17.25l-3.91-3.91a5.5 5.5 0 1 1 7.82 0z"/></svg>
-                <svg viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/></svg>
-                <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // 键盘锁定功能检测与实现
-        const supportsKeyboardLock = ('keyboard' in navigator) && ('lock' in navigator.keyboard);
-        
-        if (supportsKeyboardLock) {
-            document.addEventListener('fullscreenchange', async () => {
-                if (document.fullscreenElement) {
-                    // 锁定 ESC 键
-                    await navigator.keyboard.lock(['Escape']);
-                    console.log('Keyboard locked.');
-                    return;
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+
+        // Boilerplate to expose Babylon variables to your script's scope
+        const { 
+            Scene, FreeCamera, Vector3, Quaternion, MeshBuilder, KeyboardEventTypes, 
+            Color3, TransformNode, FollowCamera, HemisphericLight, Animation, 
+            SceneLoader, HavokPlugin, Axis, Space, PhysicsShapeMesh, 
+            PhysicsMotionType, PhysicsBody, PhysicsShapeConvexHull, PhysicsRaycastResult,
+            PBRMaterial, DirectionalLight, ShadowGenerator, StandardMaterial, Mesh,
+            CubeTexture, Texture, Color4
+        } = BABYLON;
+
+        async function init() {
+            // Initialize Havok
+            const havokInstance = await HavokPhysics();
+            globalThis.HK = havokInstance;
+
+            // Create scene
+            const scene = new Scene(engine);
+            scene.clearColor = new Color4(0.4, 0.6, 0.8, 1.0);
+            
+            // Create environment lighting
+            const hdrTexture = CubeTexture.CreateFromPrefilteredData("https://assets.babylonjs.com/environments/environmentSpecular.env", scene);
+            scene.environmentTexture = hdrTexture;
+            
+            // Enhanced lighting
+            const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+            light.intensity = 0.8;
+            
+            const sunLight = new DirectionalLight("sun", new Vector3(-1, -2, -1), scene);
+            sunLight.intensity = 0.9;
+            sunLight.position = new Vector3(20, 40, 20);
+
+            // Setup physics
+            const gravityVector = new Vector3(0, -9.81, 0);
+            const physicsPlugin = new HavokPlugin(false);
+            scene.enablePhysics(gravityVector, physicsPlugin);
+
+            // Create a simple ground as fallback
+            function createFallbackGround() {
+                console.log("Creating fallback ground...");
+                const ground = MeshBuilder.CreateGround("ground", {width: 100, height: 100}, scene);
+                const groundMat = new StandardMaterial("groundMat", scene);
+                groundMat.diffuseColor = new Color3(0.3, 0.3, 0.3);
+                ground.material = groundMat;
+                
+                const groundShape = new PhysicsShapeMesh(ground, scene);
+                const groundBody = new PhysicsBody(ground, PhysicsMotionType.STATIC, false, scene);
+                groundBody.shape = groundShape;
+                groundShape.filterMembershipMask = 1;
+                
+                // Add some obstacles
+                for (let i = 0; i < 10; i++) {
+                    const obstacle = MeshBuilder.CreateBox("obstacle" + i, {size: 2}, scene);
+                    obstacle.position.set(
+                        Math.random() * 80 - 40,
+                        1,
+                        Math.random() * 80 - 40
+                    );
+                    
+                    const obstacleShape = new PhysicsShapeConvexHull(obstacle, scene);
+                    const obstacleBody = new PhysicsBody(obstacle, PhysicsMotionType.STATIC, false, scene);
+                    obstacleBody.shape = obstacleShape;
+                    obstacleShape.filterMembershipMask = 1;
+                    
+                    const obstacleMat = new StandardMaterial("obstacleMat", scene);
+                    obstacleMat.diffuseColor = new Color3(0.7, 0.2, 0.2);
+                    obstacle.material = obstacleMat;
                 }
-                navigator.keyboard.unlock();
-                console.log('Keyboard unlocked.');
+                
+                return true;
+            }
+
+            // Try to load city model
+            try {
+                console.log("Attempting to load city.glb...");
+                await SceneLoader.LoadAsync("./", "city.glb", scene);
+                console.log("City model loaded successfully");
+                
+                // Enable physics for all meshes in the scene
+                scene.meshes.forEach(mesh => {
+                    if (mesh.physicsBody) return;
+                    
+                    try {
+                        const shape = new PhysicsShapeMesh(mesh, scene);
+                        const body = new PhysicsBody(mesh, PhysicsMotionType.STATIC, false, scene);
+                        body.shape = shape;
+                        shape.filterMembershipMask = 1;
+                        
+                        // Apply simple material if none exists
+                        if (!mesh.material) {
+                            const mat = new StandardMaterial("cityMat", scene);
+                            mat.diffuseColor = new Color3(0.7, 0.7, 0.7);
+                            mesh.material = mat;
+                        }
+                    } catch (err) {
+                        console.warn(`Could not add physics to mesh ${mesh.name}:`, err.message);
+                    }
+                });
+                
+            } catch (error) {
+                console.warn("Could not load city.glb, using fallback ground:", error.message);
+                createFallbackGround();
+            }
+
+            // Vehicle setup - Moved outside to avoid closure issues
+            const chassisMesh = MeshBuilder.CreateBox("Chassis", {width: 1.2, height: 0.5, depth: 2.5}, scene);
+            chassisMesh.position.y = 5;
+            chassisMesh.position.x = 0;
+            chassisMesh.rotationQuaternion = new Quaternion();
+            
+            // Add vehicle body visual
+            const chassisMat = new StandardMaterial("chassisMat", scene);
+            chassisMat.diffuseColor = new Color3(0.8, 0.1, 0.1);
+            chassisMesh.material = chassisMat;
+
+            const chassisPhysicsShape = new PhysicsShapeConvexHull(chassisMesh, scene);
+            const chassisPhysicsBody = new PhysicsBody(chassisMesh, PhysicsMotionType.DYNAMIC, false, scene);
+            chassisPhysicsBody.shape = chassisPhysicsShape;
+            chassisPhysicsBody.setMassProperties({
+                centerOfMass: new Vector3(0, -0.3, 0),
+                mass: 1200
+            });
+            chassisPhysicsShape.filterMembershipMask = 2;
+
+            // Create wheels
+            const wheelMat = new StandardMaterial("wheelMat", scene);
+            wheelMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
+            
+            const wheelMesh = MeshBuilder.CreateCylinder("WheelMesh", {height: 0.3, diameter: 0.6, tessellation: 24}, scene);
+            wheelMesh.material = wheelMat;
+            
+            const wheelMeshes = [
+                wheelMesh.clone("wheel1"),
+                wheelMesh.clone("wheel2"),
+                wheelMesh.clone("wheel3"),
+                wheelMesh.clone("wheel4")
+            ];
+            
+            wheelMeshes.forEach(mesh => {
+                mesh.rotationQuaternion = new Quaternion();
+            });
+
+            // Camera
+            const followCamera = new FollowCamera("FollowCam", new Vector3(-8, 3, 0), scene);
+            followCamera.heightOffset = 2;
+            followCamera.radius = 8;
+            followCamera.rotationOffset = 180;
+            followCamera.cameraAcceleration = 0.1;
+            followCamera.maxCameraSpeed = 40;
+            followCamera.lockedTarget = chassisMesh;
+            followCamera.fov = 1.2;
+            scene.activeCamera = followCamera;
+
+            // Initialize vehicle system
+            const tmp1 = new Vector3();
+            const tmp2 = new Vector3();
+            const tmpq1 = new Quaternion();
+            const upAxisLocal = new Vector3(0, 1, 0);
+            const rightAxisLocal = new Vector3(1, 0, 0);
+            const forwardAxisLocal = Vector3.Cross(upAxisLocal, rightAxisLocal);
+            forwardAxisLocal.normalize();
+            rightAxisLocal.normalize();
+
+            const raycastResult = new PhysicsRaycastResult();
+            
+            // Helper functions
+            const getBodyVelocityAtPoint = (body, point) => {
+                const r = point.subtract(body.transformNode.position);
+                const angularVelocity = body.getAngularVelocity();
+                const res = Vector3.Cross(angularVelocity, r);
+                const velocity = body.getLinearVelocity();
+                res.addInPlace(velocity);
+                return res;
+            };
+
+            const clampNumber = (num, a, b) => Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+
+            class RaycastWheel {
+                constructor(options) {
+                    this.positionLocal = options.positionLocal.clone();
+                    this.positionWorld = options.positionLocal.clone();
+                    this.suspensionAxisLocal = options.suspensionAxisLocal.clone();
+                    this.suspensionAxisWorld = this.suspensionAxisLocal.clone();
+                    this.axleAxisLocal = options.axleAxisLocal.clone();
+                    this.forwardAxisLocal = options.forwardAxisLocal.clone();
+                    this.sideForce = options.sideForce || 40;
+                    this.sideForcePositionRatio = options.sideForcePositionRatio || 0.1;
+                    this.radius = options.radius || 0.2;
+                    this.suspensionRestLength = options.suspensionRestLength || 0.5;
+                    this.prevSuspensionLength = this.suspensionRestLength;
+                    this.suspensionLength = this.suspensionRestLength;
+                    this.suspensionForce = options.suspensionForce || 15000;
+                    this.suspensionDamping = options.suspensionDamping || 0.1;
+                    this.rotationMultiplier = options.rotationMultiplier || 0.1;
+                    this.hitDistance = 0;
+                    this.hitNormal = new Vector3();
+                    this.hitPoint = new Vector3();
+                    this.inContact = false;
+                    
+                    this.steering = 0;
+                    this.rotation = 0;
+                    this.force = 0;
+
+                    this.transform = new TransformNode("WheelTransform", scene);
+                    this.transform.rotationQuaternion = new Quaternion();
+                }
+            }
+
+            class RaycastVehicle {
+                constructor(body, scene) {
+                    this.body = body;
+                    this.scene = scene;
+                    this.physicsEngine = scene.getPhysicsEngine();
+                    this.wheels = [];
+                    this.numberOfFramesToPredict = 60;
+                    this.predictionRatio = 0.6;
+                    this.nWheelsOnGround = 0;
+                    this.speed = 0;
+                    this.antiRollAxles = [];
+                    this.antiFlipForce = 3000;
+                    this.maxTiltAngle = 0.5;
+                    this.obstacleDetectionDistance = 8;
+                    this.obstacleAvoidanceForce = 200;
+                    this.collisionCount = 0;
+                }
+
+                addWheel(wheel) {
+                    if (wheel && this.wheels) {
+                        this.wheels.push(wheel);
+                    }
+                }
+                
+                removeWheel(wheel, index) {
+                    if (index !== undefined && this.wheels && this.wheels[index]) {
+                        this.wheels.splice(index, 1);
+                    } else if (wheel && this.wheels) {
+                        const wheelIndex = this.wheels.indexOf(wheel);
+                        if (wheelIndex !== -1) {
+                            this.wheels.splice(wheelIndex, 1);
+                        }
+                    }
+                }
+                
+                addAntiRollAxle(axle) {
+                    if (axle && this.antiRollAxles) {
+                        this.antiRollAxles.push(axle);
+                    }
+                }
+                
+                removeAntiRollAxle(axle, index) {
+                    if (index !== undefined && this.antiRollAxles && this.antiRollAxles[index]) {
+                        this.antiRollAxles.splice(index, 1);
+                    } else if (axle && this.antiRollAxles) {
+                        const axleIndex = this.antiRollAxles.indexOf(axle);
+                        if (axleIndex !== -1) {
+                            this.antiRollAxles.splice(axleIndex, 1);
+                        }
+                    }
+                }
+                
+                updateWheelTransform(wheel) {
+                    if (!wheel || !this.body || !this.body.transformNode) return;
+                    
+                    Vector3.TransformCoordinatesToRef(wheel.positionLocal, this.body.transformNode.getWorldMatrix(), wheel.positionWorld);
+                    Vector3.TransformNormalToRef(wheel.suspensionAxisLocal, this.body.transformNode.getWorldMatrix(), wheel.suspensionAxisWorld);
+                }
+                
+                updateVehicleSpeed() {
+                    if (!this.body || !this.body.transformNode) return;
+                    
+                    Vector3.TransformNormalToRef(this.body.getLinearVelocity(), this.body.transformNode.getWorldMatrix().clone().invert(), tmp1);
+                    this.speed = tmp1.z;
+                }
+                
+                updateWheelSteering(wheel) {
+                    if (!wheel || !this.body || !this.body.transformNode) return;
+                    
+                    Quaternion.RotationAxisToRef(wheel.suspensionAxisLocal.negateToRef(tmp1), wheel.steering, tmpq1);
+                    this.body.transformNode.rotationQuaternion.multiplyToRef(tmpq1, wheel.transform.rotationQuaternion);
+                    wheel.transform.rotationQuaternion.normalize();
+                    wheel.transform.computeWorldMatrix(true);
+                }
+                
+                updateWheelRaycast(wheel) {
+                    if (!wheel || !this.physicsEngine) return;
+                    
+                    tmp1.copyFrom(wheel.suspensionAxisWorld).scaleInPlace(wheel.suspensionRestLength).addInPlace(wheel.positionWorld);
+                    const rayStart = wheel.positionWorld;
+                    const rayEnd = tmp1;
+                    
+                    this.physicsEngine.raycastToRef(rayStart, rayEnd, raycastResult);
+                    
+                    if (!raycastResult.hasHit) {
+                        wheel.inContact = false;
+                        return;
+                    }
+                    
+                    wheel.hitPoint.copyFrom(raycastResult.hitPointWorld);
+                    wheel.hitNormal.copyFrom(raycastResult.hitNormalWorld);
+                    wheel.hitDistance = raycastResult.hitDistance;
+                    wheel.inContact = true;
+                    this.nWheelsOnGround++;
+                }
+                
+                updateWheelSuspension(wheel) {
+                    if (!wheel || !this.body || !this.scene) return;
+                    
+                    if (!wheel.inContact) {
+                        wheel.prevSuspensionLength = wheel.suspensionLength;
+                        wheel.hitDistance = wheel.suspensionRestLength;
+                        return;
+                    }
+                
+                    let force = 0.0;
+                    wheel.suspensionLength = wheel.suspensionRestLength - wheel.hitDistance;
+                    wheel.suspensionLength = clampNumber(wheel.suspensionLength, 0, wheel.suspensionRestLength);
+                    const compressionRatio = wheel.suspensionLength / wheel.suspensionRestLength;
+
+                    const compressionForce = wheel.suspensionForce * compressionRatio;
+                    force += compressionForce;
+
+                    const rate = (wheel.prevSuspensionLength - wheel.suspensionLength) / this.scene.getPhysicsEngine().getTimeStep();
+                    wheel.prevSuspensionLength = wheel.suspensionLength;
+
+                    const dampingForce = rate * wheel.suspensionForce * wheel.suspensionDamping;
+                    force -= dampingForce;
+
+                    const suspensionForce = Vector3.TransformNormalToRef(wheel.suspensionAxisLocal.negateToRef(tmp1), 
+                        this.body.transformNode.getWorldMatrix(), tmp1).scaleInPlace(force);
+
+                    this.body.applyForce(suspensionForce, wheel.hitPoint);
+                }
+                
+                updateWheelSideForce(wheel) {
+                    if (!wheel || !wheel.inContact || !this.body || !this.scene) return;
+                    
+                    const tireWorldVel = getBodyVelocityAtPoint(this.body, wheel.positionWorld);
+                    const steeringDir = Vector3.TransformNormalToRef(wheel.axleAxisLocal, wheel.transform.getWorldMatrix(), tmp1);
+                    const steeringVel = Vector3.Dot(steeringDir, tireWorldVel);
+                    const desiredVelChange = -steeringVel;
+                    const desiredAccel = desiredVelChange / this.scene.getPhysicsEngine().getTimeStep();
+                    
+                    this.body.applyForce(
+                        steeringDir.scaleInPlace(wheel.sideForce * desiredAccel), 
+                        Vector3.LerpToRef(wheel.hitPoint, wheel.positionWorld, wheel.sideForcePositionRatio, tmp2)
+                    );
+                }
+                
+                updateWheelForce(wheel) {
+                    if (!wheel || !wheel.inContact || !this.body) return;
+                    
+                    if (wheel.force !== 0) {
+                        const forwardDirectionWorld = Vector3.TransformNormalToRef(wheel.forwardAxisLocal, 
+                            wheel.transform.getWorldMatrix(), tmp1).scaleInPlace(wheel.force);
+                        this.body.applyForce(forwardDirectionWorld, tmp2.copyFrom(wheel.hitPoint));
+                    }
+                }
+                
+                updateWheelRotation(wheel) {
+                    if (!wheel) return;
+                    
+                    wheel.rotation += this.speed * wheel.rotationMultiplier * wheel.radius;
+                    Quaternion.RotationAxisToRef(wheel.axleAxisLocal, wheel.rotation, tmpq1);
+                    wheel.transform.rotationQuaternion.multiplyToRef(tmpq1, wheel.transform.rotationQuaternion);
+                    wheel.transform.rotationQuaternion.normalize();
+                }
+                
+                updateWheelTransformPosition(wheel) {
+                    if (!wheel) return;
+                    
+                    wheel.transform.position.copyFrom(wheel.positionWorld);
+                    wheel.transform.position.addInPlace(wheel.suspensionAxisWorld.scale(wheel.hitDistance - wheel.radius));
+                }
+                
+                updateVehiclePredictiveLanding() {
+                    if (this.nWheelsOnGround > 0 || !this.body || !this.physicsEngine || !this.scene) return;
+                    
+                    const position = this.body.transformNode.position;
+                    const gravity = tmp1.copyFrom(this.physicsEngine.gravity).scaleInPlace(this.body.getGravityFactor());
+                    const frameTime = this.scene.getPhysicsEngine().getTimeStep();
+                    const predictTime = this.numberOfFramesToPredict * frameTime;
+                    
+                    const predictedPosition = tmp2;
+                    predictedPosition.copyFrom(this.body.getLinearVelocity()).scaleInPlace(predictTime);
+                    predictedPosition.addInPlace(gravity.scaleInPlace(0.5 * predictTime * predictTime));
+                    predictedPosition.addInPlace(this.body.transformNode.position);
+                    
+                    this.physicsEngine.raycastToRef(position, predictedPosition, raycastResult);
+                
+                    if (raycastResult.hasHit) {
+                        const velocity = this.body.getLinearVelocity().normalize();
+                        const direction = raycastResult.hitPointWorld.subtractToRef(position, tmp1);
+                        const displacement = tmp2;
+                        displacement.x = velocity.x === 0 ? 0 : direction.x / velocity.x;
+                        displacement.y = velocity.y === 0 ? 0 : direction.y / velocity.y;
+                        displacement.z = velocity.z === 0 ? 0 : direction.z / velocity.z;
+                        
+                        const nFrames = displacement.length();
+                        const R1 = Vector3.TransformNormalToRef(Axis.Y, this.body.transformNode.getWorldMatrix(), tmp1);
+                        const R2 = raycastResult.hitNormalWorld;
+                        const rotationDifference = Vector3.CrossToRef(R1, R2, tmp2);
+                        const timeStepDuration = frameTime * nFrames;
+                        const predictedAngularVelocity = rotationDifference.scaleToRef(1 / timeStepDuration, tmp2);
+
+                        this.body.setAngularVelocity(Vector3.LerpToRef(
+                            this.body.getAngularVelocity(), 
+                            predictedAngularVelocity, 
+                            this.predictionRatio, 
+                            tmp1
+                        ));
+                    }
+                }
+
+                update() {
+                    if (!this.body || !this.body.transformNode) return;
+                    
+                    this.body.transformNode.computeWorldMatrix(true);
+                    this.nWheelsOnGround = 0;
+                    this.updateVehicleSpeed();
+                    
+                    // Update all wheels
+                    if (this.wheels) {
+                        this.wheels.forEach((wheel, index) => {
+                            if (!wheel) return;
+                            this.updateWheelTransform(wheel);
+                            this.updateWheelSteering(wheel);
+                            this.updateWheelRaycast(wheel);
+                            this.updateWheelSuspension(wheel);
+                            this.updateWheelForce(wheel);
+                            this.updateWheelSideForce(wheel);
+                            this.updateWheelTransformPosition(wheel);
+                            this.updateWheelRotation(wheel);
+                        });
+                    }
+                    
+                    this.updateVehiclePredictiveLanding();
+                    
+                    // Apply anti-roll forces
+                    if (this.antiRollAxles) {
+                        this.antiRollAxles.forEach(axle => {
+                            if (!axle || !this.wheels) return;
+                            
+                            const wheelA = this.wheels[axle.wheelA];
+                            const wheelB = this.wheels[axle.wheelB];
+                            if (!wheelA || !wheelB) return;
+                            if (!wheelA.inContact && !wheelB.inContact) return;
+                            
+                            const wheelOrder = wheelA.suspensionLength <= wheelB.suspensionLength ? 
+                                            [wheelA, wheelB] : [wheelB, wheelA];
+                            const maxCompressionRestLength = (wheelA.suspensionRestLength + wheelB.suspensionRestLength) / 2;
+                            const compressionDifference = wheelOrder[1].suspensionLength - wheelOrder[0].suspensionLength;
+                            const compressionRatio = Math.min(compressionDifference, maxCompressionRestLength) / maxCompressionRestLength;
+                            
+                            const antiRollForce = tmp1.copyFrom(wheelOrder[0].suspensionAxisWorld)
+                                .scaleInPlace(axle.force * compressionRatio);
+                            this.body.applyForce(antiRollForce, wheelOrder[0].positionWorld);
+                            
+                            antiRollForce.copyFrom(wheelOrder[1].suspensionAxisWorld)
+                                .negateInPlace()
+                                .scaleInPlace(axle.force * compressionRatio);
+                            this.body.applyForce(antiRollForce, wheelOrder[1].positionWorld);
+                        });
+                    }
+                }
+            }
+
+            // Initialize vehicle
+            const vehicle = new RaycastVehicle(chassisPhysicsBody, scene);
+            vehicle.numberOfFramesToPredict = 80;
+            vehicle.predictionRatio = 0.7;
+            
+            // Enhanced wheel configuration
+            const wheelConfig = {
+                positionLocal: new Vector3(0.6, 0, -0.9),
+                suspensionRestLength: 0.7,
+                suspensionForce: 18000,
+                suspensionDamping: 0.2,
+                suspensionAxisLocal: new Vector3(0, -1, 0),
+                axleAxisLocal: new Vector3(1, 0, 0),
+                forwardAxisLocal: new Vector3(0, 0, 1),
+                sideForcePositionRatio: 0.15,
+                sideForce: 60,
+                radius: 0.3,
+                rotationMultiplier: 0.12
+            };
+
+            // Add wheels
+            vehicle.addWheel(new RaycastWheel(wheelConfig)); // Right rear
+            wheelConfig.positionLocal.set(-0.6, 0, -0.9); // Left rear
+            vehicle.addWheel(new RaycastWheel(wheelConfig));
+            wheelConfig.positionLocal.set(-0.6, 0, 0.8); // Left front
+            vehicle.addWheel(new RaycastWheel(wheelConfig));
+            wheelConfig.positionLocal.set(0.6, 0, 0.8); // Right front
+            vehicle.addWheel(new RaycastWheel(wheelConfig));
+            
+            // Enhanced anti-roll bars
+            vehicle.addAntiRollAxle({wheelA: 0, wheelB: 1, force: 12000}); // Rear axle
+            vehicle.addAntiRollAxle({wheelA: 2, wheelB: 3, force: 12000}); // Front axle
+            
+            // Controls
+            const controls = {
+                forward: false,
+                backward: false,
+                left: false,
+                right: false,
+                brake: false,
+                reset: false
+            };
+                
+            scene.onKeyboardObservable.add((kbInfo) => {
+                switch (kbInfo.type) {
+                    case KeyboardEventTypes.KEYDOWN:
+                        if(kbInfo.event.key === 'w' || kbInfo.event.key === 'W') controls.forward = true;
+                        if(kbInfo.event.key === 's' || kbInfo.event.key === 'S') controls.backward = true;
+                        if(kbInfo.event.key === 'a' || kbInfo.event.key === 'A') controls.left = true;
+                        if(kbInfo.event.key === 'd' || kbInfo.event.key === 'D') controls.right = true;
+                        if(kbInfo.event.key === ' ') controls.brake = true;
+                        if(kbInfo.event.key === 'r' || kbInfo.event.key === 'R') controls.reset = true;
+                        break;
+                    case KeyboardEventTypes.KEYUP:
+                        if(kbInfo.event.key === 'w' || kbInfo.event.key === 'W') controls.forward = false;
+                        if(kbInfo.event.key === 's' || kbInfo.event.key === 'S') controls.backward = false;
+                        if(kbInfo.event.key === 'a' || kbInfo.event.key === 'A') controls.left = false;
+                        if(kbInfo.event.key === 'd' || kbInfo.event.key === 'D') controls.right = false;
+                        if(kbInfo.event.key === ' ') controls.brake = false;
+                        break;
+                }
+            });
+            
+            // Vehicle control parameters
+            const maxVehicleForce = 2800;
+            const maxReverseForce = 1500;
+            const brakeForce = 4000;
+            const maxSteerValue = 0.7;
+            const steeringIncrement = 0.008;
+            const steerRecover = 0.06;
+            let forwardForce = 0;
+            let steerValue = 0;
+            let steerDirection = 0;
+            let currentSpeed = 0;
+            let lastUpdateTime = Date.now();
+
+            // Reset function
+            function resetVehicle() {
+                chassisMesh.position.set(0, 5, 0);
+                chassisMesh.rotationQuaternion = Quaternion.Identity();
+                chassisPhysicsBody.setLinearVelocity(Vector3.Zero());
+                chassisPhysicsBody.setAngularVelocity(Vector3.Zero());
+                steerValue = 0;
+                vehicle.collisionCount = 0;
+                updateInfo();
+            }
+
+            // Update info display
+            function updateInfo() {
+                document.getElementById('speed').textContent = Math.abs(Math.round(currentSpeed * 3.6));
+                document.getElementById('wheels').textContent = vehicle.nWheelsOnGround || 0;
+                document.getElementById('collisions').textContent = vehicle.collisionCount || 0;
+            }
+
+            // Obstacle detection and avoidance
+            function checkObstacles() {
+                const forwardRayLength = vehicle.obstacleDetectionDistance || 8;
+                const rightRayLength = forwardRayLength * 0.6;
+                
+                // Cast rays in forward direction
+                const rayStart = chassisMesh.position.add(new Vector3(0, 0.5, 0));
+                const rayEnd = rayStart.add(forwardAxisLocal.scale(forwardRayLength));
+                const result = new PhysicsRaycastResult();
+                scene.getPhysicsEngine().raycastToRef(rayStart, rayEnd, result);
+                
+                if (result.hasHit && result.hitDistance < forwardRayLength * 0.8) {
+                    // Calculate avoidance force
+                    const avoidanceDir = rightAxisLocal.scale(Math.sign(Vector3.Dot(result.hitNormalWorld, rightAxisLocal)));
+                    const forceMagnitude = (vehicle.obstacleAvoidanceForce || 200) * (1 - result.hitDistance / forwardRayLength);
+                    chassisPhysicsBody.applyForce(avoidanceDir.scale(forceMagnitude), chassisMesh.position);
+                    
+                    // Apply braking force
+                    const brakeVelocity = chassisPhysicsBody.getLinearVelocity().scale(-0.5);
+                    chassisPhysicsBody.applyForce(brakeVelocity.scale(1000), chassisMesh.position);
+                }
+            }
+
+            // Anti-flip system
+            function applyAntiFlip() {
+                const up = Vector3.TransformNormal(Axis.Y, chassisMesh.getWorldMatrix());
+                const dot = Vector3.Dot(up, Axis.Y);
+                
+                if (dot < 0.7) { // Vehicle is tilting too much
+                    const correctionTorque = Vector3.Cross(up, Axis.Y).scale(vehicle.antiFlipForce || 3000);
+                    chassisPhysicsBody.applyTorque(correctionTorque);
+                }
+            }
+
+            // Main update loop
+            scene.onBeforeRenderObservable.add(() => {
+                const deltaTime = (Date.now() - lastUpdateTime) / 1000;
+                lastUpdateTime = Date.now();
+                
+                // Reset vehicle if requested
+                if (controls.reset) {
+                    resetVehicle();
+                    controls.reset = false;
+                }
+                
+                // Calculate forces
+                forwardForce = 0;
+                steerDirection = 0;
+                
+                if (controls.forward) forwardForce = 1;
+                if (controls.backward) forwardForce = -1;
+                if (controls.left) steerDirection = -1;
+                if (controls.right) steerDirection = 1;
+                
+                // Emergency brake
+                if (controls.brake) {
+                    const brakeVelocity = chassisPhysicsBody.getLinearVelocity().scale(-0.3);
+                    chassisPhysicsBody.applyForce(brakeVelocity.scale(brakeForce), chassisMesh.position);
+                }
+                
+                // Steering calculation with speed-based sensitivity
+                const speedFactor = Math.max(0.3, 1 - Math.abs(currentSpeed) / 50);
+                steerValue += steerDirection * steeringIncrement * speedFactor;
+                steerValue = Math.min(Math.max(steerValue, -maxSteerValue), maxSteerValue);
+                steerValue *= 1 - (1 - Math.abs(steerDirection)) * steerRecover;
+                
+                // Apply steering to front wheels
+                if (vehicle.wheels && vehicle.wheels[2] && vehicle.wheels[3]) {
+                    vehicle.wheels[2].steering = steerValue;
+                    vehicle.wheels[3].steering = steerValue;
+                }
+                
+                // Apply force with speed limiting
+                const forceMultiplier = forwardForce > 0 ? maxVehicleForce : maxReverseForce;
+                const appliedForce = forwardForce * forceMultiplier * (1 - Math.abs(currentSpeed) / 80);
+                
+                if (vehicle.wheels && vehicle.wheels[2] && vehicle.wheels[3]) {
+                    vehicle.wheels[2].force = appliedForce;
+                    vehicle.wheels[3].force = appliedForce;
+                }
+                
+                // Update vehicle physics
+                vehicle.update();
+                
+                // Update current speed
+                currentSpeed = vehicle.speed || 0;
+                
+                // Update wheel visuals
+                if (vehicle.wheels) {
+                    vehicle.wheels.forEach((wheel, index) => {
+                        if (!wheelMeshes[index] || !wheel || !wheel.transform) return;
+                        const wheelMesh = wheelMeshes[index];
+                        wheelMesh.position.copyFrom(wheel.transform.position);
+                        wheelMesh.rotationQuaternion.copyFrom(wheel.transform.rotationQuaternion);
+                        wheelMesh.rotate(Axis.Z, Math.PI / 2, Space.LOCAL);
+                    });
+                }
+                
+                // Apply safety systems
+                checkObstacles();
+                applyAntiFlip();
+                
+                // Update info display
+                updateInfo();
+                
+                // Collision detection
+                if ((vehicle.nWheelsOnGround || 0) < 2 && Math.abs(currentSpeed) > 5) {
+                    vehicle.collisionCount = (vehicle.collisionCount || 0) + 1;
+                }
+            });
+
+            // Hide loading screen and show controls
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('info').style.display = 'block';
+            document.getElementById('controls').style.display = 'block';
+
+            // Start render loop
+            engine.runRenderLoop(function () {
+                scene.render();
+            });
+
+            window.addEventListener("resize", function () {
+                engine.resize();
             });
         }
-        
-        let currentState = 'patientez'; 
-        let escPressTime = 0;
-        let escTimer = null;
-        let secretInput = '';
-        const secretCode = 'agocrate';
-        
-        function triggerGlitch() {
-            for(let i = 0; i < 8; i++) {
-                const bar = document.createElement('div');
-                bar.className = 'glitch-bar';
-                const height = Math.random() * 50 + 2;
-                bar.style.height = height + 'px';
-                bar.style.top = Math.random() * 100 + '%';
-                bar.style.opacity = Math.random();
-                bar.style.left = (Math.random() * 10 - 5) + 'px';
-                document.body.appendChild(bar);
-                
-                setTimeout(() => bar.remove(), Math.random() * 150 + 50);
-            }
-        }
 
-        function updateClock() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            const options = { weekday: 'long', day: 'numeric', month: 'long' };
-            const dateStr = now.toLocaleDateString('fr-FR', options);
-            document.getElementById('time').textContent = timeStr;
-            document.getElementById('date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
+        // Start the application
+        init().catch(error => {
+            console.error("Failed to initialize:", error);
+            document.getElementById('loading').innerHTML = `Error: ${error.message}<br>Creating fallback scene...`;
             
-            // ESC 长按处理（2秒后退出全屏）
-            if (key === 'escape') {
-                if (escPressTime === 0) {
-                    escPressTime = Date.now();
-                    escTimer = setTimeout(() => {
-                        const elapsed = Date.now() - escPressTime;
-                        if (elapsed >= 2000) {
-                            // ESC 长按 2 秒后退出全屏并解锁键盘
-                            if (document.fullscreenElement) {
-                                document.exitFullscreen();
-                            }
-                            if (supportsKeyboardLock) {
-                                navigator.keyboard.unlock();
-                            }
-                        }
-                        escPressTime = 0;
-                    }, 2100);
-                }
-                return;
-            }
-            
-            // 特殊按键序列检测
-            if (key.length === 1 && key.match(/[a-z]/i)) {
-                secretInput += key;
+            // Try to create a basic scene even if initialization fails
+            setTimeout(() => {
+                const scene = new Scene(engine);
+                scene.clearColor = new Color4(0.4, 0.6, 0.8, 1.0);
                 
-                // 检查是否匹配秘密代码
-                if (secretInput.includes(secretCode)) {
-                    // 匹配成功，关闭页面
-                    window.open('', '_self').close();
-                    return;
-                }
+                const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+                light.intensity = 0.7;
                 
-                // 限制输入长度，避免过长
-                if (secretInput.length > 20) {
-                    secretInput = secretInput.slice(-20);
-                }
-            }
-
-            // 全屏
-            if (key === 'o') {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(() => {});
-                }
-                return;
-            }
-
-            // M: 加载 -> 登录
-            if (key === 'm' && currentState === 'patientez') {
-                setTimeout(() => {
-                    document.getElementById('boot-loader').style.opacity = '0';
-                    setTimeout(() => {
-                        document.getElementById('boot-loader').style.display = 'none';
-                        currentState = 'login';
-                    }, 1000);
-                }, 3000);
-            }
-
-            // N: 欢迎 -> 蓝屏
-            if (key === 'n' && currentState === 'bienvenue') {
-                setTimeout(() => {
-                    document.getElementById('bsod').style.display = 'flex';
-                    currentState = 'bsod';
-                }, 3000);
-            }
-
-            // R: 蓝屏下小故障
-            if (key === 'r' && currentState === 'bsod') {
-                triggerGlitch();
-            }
-
-            // E: 3秒后彻底花屏 
-            if (key === 'e') {
-                setTimeout(() => {
-                    document.getElementById('broken-screen').style.display = 'block';
-                    currentState = 'broken';
-                }, 3000);
-            }
-
-            if (currentState === 'login') {
-                unlock();
-            }
-        });
-        
-        // ESC 键释放处理
-        document.addEventListener('keyup', (e) => {
-            if (e.key.toLowerCase() === 'escape') {
-                clearTimeout(escTimer);
-                escPressTime = 0;
-            }
-        });
-
-        const lockScreen = document.getElementById('lock-screen');
-        const unlock = () => {
-            lockScreen.classList.add('hidden');
-            document.body.classList.add('unlocked');
-        };
-        lockScreen.addEventListener('click', unlock);
-
-        const passwordInput = document.getElementById('passwordInput');
-        const toggleBtn = document.getElementById('togglePassword');
-        const showPass = () => passwordInput.type = 'text';
-        const hidePass = () => passwordInput.type = 'password';
-        toggleBtn.addEventListener('mousedown', showPass);
-        toggleBtn.addEventListener('mouseup', hidePass);
-        toggleBtn.addEventListener('mouseleave', hidePass);
-
-        const loginForm = document.getElementById('loginForm');
-        const loginFields = document.getElementById('login-fields');
-        const welcomeSection = document.getElementById('welcome-section');
-
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            loginFields.style.display = 'none';
-            welcomeSection.style.display = 'flex';
-            currentState = 'bienvenue';
+                const camera = new FreeCamera("camera", new Vector3(0, 5, -10), scene);
+                camera.setTarget(Vector3.Zero());
+                camera.attachControl(canvas, true);
+                
+                const ground = MeshBuilder.CreateGround("ground", {width: 100, height: 100}, scene);
+                const groundMat = new StandardMaterial("groundMat", scene);
+                groundMat.diffuseColor = new Color3(0.3, 0.3, 0.3);
+                ground.material = groundMat;
+                
+                engine.runRenderLoop(function () {
+                    scene.render();
+                });
+                
+                document.getElementById('loading').style.display = 'none';
+            }, 1000);
         });
     </script>
 </body>
