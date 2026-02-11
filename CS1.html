@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Babylon.js Raycast Vehicle with City Environment</title>
+    <title>Babylon.js Raycast Vehicle</title>
     <style>
         html, body {
             overflow: hidden;
@@ -11,47 +11,11 @@
             height: 100%;
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
         }
         #renderCanvas {
             width: 100%;
             height: 100%;
             touch-action: none;
-        }
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            z-index: 100;
-        }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 100;
-        }
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 200;
         }
     </style>
     <!-- Babylon.js Core and Dependencies -->
@@ -62,19 +26,6 @@
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <div id="loading">Loading city environment...</div>
-    <div id="info" style="display: none;">
-        Speed: <span id="speed">0</span> km/h<br>
-        Wheels on Ground: <span id="wheels">4</span><br>
-        Collisions: <span id="collisions">0</span>
-    </div>
-    <div id="controls" style="display: none;">
-        <strong>Controls:</strong><br>
-        W/S: Accelerate/Brake<br>
-        A/D: Steer Left/Right<br>
-        R: Reset Vehicle<br>
-        Space: Emergency Brake
-    </div>
     <script>
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
@@ -84,677 +35,471 @@
             Scene, FreeCamera, Vector3, Quaternion, MeshBuilder, KeyboardEventTypes, 
             Color3, TransformNode, FollowCamera, HemisphericLight, Animation, 
             SceneLoader, HavokPlugin, Axis, Space, PhysicsShapeMesh, 
-            PhysicsMotionType, PhysicsBody, PhysicsShapeConvexHull, PhysicsRaycastResult,
-            PBRMaterial, DirectionalLight, ShadowGenerator, StandardMaterial, Mesh,
-            CubeTexture, Texture, Color4
+            PhysicsMotionType, PhysicsBody, PhysicsShapeConvexHull, PhysicsRaycastResult 
         } = BABYLON;
+        const { GridMaterial } = BABYLON;
 
         async function init() {
             // Initialize Havok
             const havokInstance = await HavokPhysics();
             globalThis.HK = havokInstance;
 
-            // Create scene
-            const scene = new Scene(engine);
-            scene.clearColor = new Color4(0.4, 0.6, 0.8, 1.0);
-            
-            // Create environment lighting
-            const hdrTexture = CubeTexture.CreateFromPrefilteredData("https://assets.babylonjs.com/environments/environmentSpecular.env", scene);
-            scene.environmentTexture = hdrTexture;
-            
-            // Enhanced lighting
-            const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
-            light.intensity = 0.8;
-            
-            const sunLight = new DirectionalLight("sun", new Vector3(-1, -2, -1), scene);
-            sunLight.intensity = 0.9;
-            sunLight.position = new Vector3(20, 40, 20);
+            // --- START OF YOUR UPLOADED lol.js CODE (EXACTLY AS PROVIDED) ---
+            var createScene = async function () {
+                // This creates a basic Babylon Scene object (non-mesh)
+                const scene = new Scene(engine);
+                const camera = new FreeCamera("camera1", new Vector3(0, 5, -10), scene)
+                camera.setTarget(Vector3.Zero())
+                camera.attachControl(canvas, true)
+                const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene)
+                light.intensity = 0.7
 
-            // Setup physics
-            const gravityVector = new Vector3(0, -9.81, 0);
-            const physicsPlugin = new HavokPlugin(false);
-            scene.enablePhysics(gravityVector, physicsPlugin);
+                const levelContainer = await SceneLoader.LoadAssetContainerAsync('https://raw.githubusercontent.com/RaggarDK/ArcadeRaycastVehicle/master/public/models/', 'ds01.texless.gltf', scene)
+                const levelFiles = levelContainer.instantiateModelsToScene(name => name, true)
 
-            // Create a simple ground as fallback
-            function createFallbackGround() {
-                console.log("Creating fallback ground...");
-                const ground = MeshBuilder.CreateGround("ground", {width: 100, height: 100}, scene);
-                const groundMat = new StandardMaterial("groundMat", scene);
-                groundMat.diffuseColor = new Color3(0.3, 0.3, 0.3);
-                ground.material = groundMat;
+                const gravityVector = new Vector3(0, -9.81, 0)
+                const physicsPlugin = new HavokPlugin(false)
+                scene.enablePhysics(gravityVector, physicsPlugin)
+
+                const levelRootNode = levelFiles.rootNodes[0]
+                levelRootNode.scaling.set(.3,.3,.3)
+                levelRootNode.computeWorldMatrix(true)
+
+                const gridMaterialBlue = new GridMaterial("")
+                gridMaterialBlue.mainColor = new Color3(0.05,0.1,0.3)
+
+                const gridMaterialRed = new GridMaterial("")
+                gridMaterialRed.mainColor = new Color3(0.6,0.1,0.3)
                 
-                const groundShape = new PhysicsShapeMesh(ground, scene);
-                const groundBody = new PhysicsBody(ground, PhysicsMotionType.STATIC, false, scene);
-                groundBody.shape = groundShape;
-                groundShape.filterMembershipMask = 1;
-                
-                // Add some obstacles
-                for (let i = 0; i < 10; i++) {
-                    const obstacle = MeshBuilder.CreateBox("obstacle" + i, {size: 2}, scene);
-                    obstacle.position.set(
-                        Math.random() * 80 - 40,
-                        1,
-                        Math.random() * 80 - 40
-                    );
-                    
-                    const obstacleShape = new PhysicsShapeConvexHull(obstacle, scene);
-                    const obstacleBody = new PhysicsBody(obstacle, PhysicsMotionType.STATIC, false, scene);
-                    obstacleBody.shape = obstacleShape;
-                    obstacleShape.filterMembershipMask = 1;
-                    
-                    const obstacleMat = new StandardMaterial("obstacleMat", scene);
-                    obstacleMat.diffuseColor = new Color3(0.7, 0.2, 0.2);
-                    obstacle.material = obstacleMat;
+                const getMeshesByNameIncluded = (meshes, names) => {
+                    const result = []
+                    meshes.forEach(mesh => {
+                        names.forEach(name => {
+                            if(mesh.name.includes(name)) result.push(mesh)
+                        })
+                    })
+                    return result
                 }
-                
-                return true;
-            }
+                const levelChildren = levelRootNode.getChildren()
+                const staticGeom = getMeshesByNameIncluded(levelChildren, ['ground', 'side', 'pipe', 'ramp', 'rail', 'platform'])
+                staticGeom.forEach(mesh => {
+                    mesh.computeWorldMatrix(true)
+                    const meshPhysicsShape = new PhysicsShapeMesh(
+                        mesh,
+                        scene
+                    )
+                    const meshPhysicsBody = new PhysicsBody(mesh, PhysicsMotionType.STATIC, false, scene);
+                    meshPhysicsBody.shape = meshPhysicsShape
+                    meshPhysicsShape.filterMembershipMask = 1
+                    mesh.material = gridMaterialBlue
+                })
+                const dynamicGeom = getMeshesByNameIncluded(levelChildren, ['barrel', 'Box', 'cone'])
+                dynamicGeom.forEach(mesh => {
+                    mesh.computeWorldMatrix(true)
+                    const meshPhysicsShape = new PhysicsShapeConvexHull(
+                        mesh,
+                        scene
+                    )
+                    const meshPhysicsBody = new PhysicsBody(mesh, PhysicsMotionType.DYNAMIC, true, scene);
+                    meshPhysicsBody.shape = meshPhysicsShape
+                    meshPhysicsBody.setMassProperties({
+                        mass: 10
+                    })
+                    meshPhysicsShape.filterMembershipMask = 1
+                    mesh.material = gridMaterialRed
+                })
 
-            // Try to load city model
-            try {
-                console.log("Attempting to load city.glb...");
-                await SceneLoader.LoadAsync("./", "city.glb", scene);
-                console.log("City model loaded successfully");
+                const chassisMesh = MeshBuilder.CreateBox("Chassis", {width:1, height:0.4, depth:2})
+                chassisMesh.position.y = 5
+                chassisMesh.position.x = 0
+                chassisMesh.rotationQuaternion = new Quaternion()
+
+                const chassisPhysicsShape = new PhysicsShapeConvexHull(
+                    chassisMesh,
+                    scene
+                )
+
+                const chassisPhysicsBody = new PhysicsBody(chassisMesh, PhysicsMotionType.DYNAMIC, false, scene);
+                chassisPhysicsBody.shape = chassisPhysicsShape
+                chassisPhysicsBody.setMassProperties({
+                    centerOfMass: new Vector3(0, -0.5, 0)
+                })
+                chassisPhysicsShape.filterMembershipMask = 2
+
+                const wheelMesh = MeshBuilder.CreateCylinder("WheelMesh", {height:0.3, diameter:0.4})
+                const wheelMeshes = [wheelMesh, wheelMesh.createInstance(1), wheelMesh.createInstance(2), wheelMesh.createInstance(3)]
+                wheelMeshes.forEach(mesh => {
+                    mesh.rotationQuaternion = new Quaternion()
+                })
+
+                const followCamera = new FollowCamera("FollowCam", new Vector3(-6, 0, 0), scene)
+                followCamera.heightOffset = 1
+                followCamera.radius = 5
+                followCamera.rotationOffset = 180
+                followCamera.cameraAcceleration = 0.08
+                followCamera.maxCameraSpeed = 30
+                followCamera.lockedTarget = chassisMesh
+                scene.activeCamera = followCamera
+
+                const vehicle = new RaycastVehicle(chassisPhysicsBody, scene)
+                vehicle.numberOfFramesToPredict = 60//Number of frames to predict future upwards orientation if airborne
+                vehicle.predictionRatio = 0.8//[0-1]How quickly to correct angular velocity towards future orientation. 0 = disabled
                 
-                // Enable physics for all meshes in the scene
-                scene.meshes.forEach(mesh => {
-                    if (mesh.physicsBody) return;
+                const wheelConfig = {
+                    positionLocal:new Vector3(0.49, 0, -0.7),//Local connection point on the chassis
+                    suspensionRestLength:0.6, //Rest length when suspension is fully decompressed
+                    suspensionForce:15000, //Max force to apply to the suspension/spring 
+                    suspensionDamping:0.15, //[0-1] Damper force in percentage of suspensionForce
+                    suspensionAxisLocal:new Vector3(0,-1,0),//Direction of the spring
+                    axleAxisLocal:new Vector3(1,0,0),//Axis the wheel spins around
+                    forwardAxisLocal:new Vector3(0,0,1),//Forward direction of the wheel
+                    sideForcePositionRatio:0.1,//[0-1]0 = wheel position, 1 = connection point 
+                    sideForce:40,//Force applied to counter wheel drifting
+                    radius:0.2,
+                    rotationMultiplier:0.1//How fast to spin the wheel
+                }
+
+                vehicle.addWheel(new RaycastWheel(wheelConfig))//Right rear
+
+                wheelConfig.positionLocal.set(-0.49, 0, -0.7)//Left rear
+                vehicle.addWheel(new RaycastWheel(wheelConfig))
+                
+                wheelConfig.positionLocal.set(-0.49, 0, 0.8)
+                vehicle.addWheel(new RaycastWheel(wheelConfig))//Left front
+                
+                wheelConfig.positionLocal.set(0.49, 0, 0.8)
+                vehicle.addWheel(new RaycastWheel(wheelConfig))//Right front
+                
+                //Attempt at some anti rolling
+                vehicle.addAntiRollAxle({wheelA:0,wheelB:1,force:10000}) // right rear - left rear
+                vehicle.addAntiRollAxle({wheelA:2,wheelB:3,force:10000}) // left front - right rear
+
+                const controls = {
+                    forward:false,
+                    backward:false,
+                    left:false,
+                    right:false
+                }
                     
-                    try {
-                        const shape = new PhysicsShapeMesh(mesh, scene);
-                        const body = new PhysicsBody(mesh, PhysicsMotionType.STATIC, false, scene);
-                        body.shape = shape;
-                        shape.filterMembershipMask = 1;
-                        
-                        // Apply simple material if none exists
-                        if (!mesh.material) {
-                            const mat = new StandardMaterial("cityMat", scene);
-                            mat.diffuseColor = new Color3(0.7, 0.7, 0.7);
-                            mesh.material = mat;
-                        }
-                    } catch (err) {
-                        console.warn(`Could not add physics to mesh ${mesh.name}:`, err.message);
+                scene.onKeyboardObservable.add((kbInfo) => {
+                    switch (kbInfo.type) {
+                        case KeyboardEventTypes.KEYDOWN:
+                        if(kbInfo.event.key == 'w') controls.forward = true
+                        if(kbInfo.event.key == 's') controls.backward = true
+                        if(kbInfo.event.key == 'a') controls.left = true
+                        if(kbInfo.event.key == 'd') controls.right = true
+                        break
+                        case KeyboardEventTypes.KEYUP:
+                        if(kbInfo.event.key == 'w') controls.forward = false
+                        if(kbInfo.event.key == 's') controls.backward = false
+                        if(kbInfo.event.key == 'a') controls.left = false
+                        if(kbInfo.event.key == 'd') controls.right = false
+                        break
                     }
-                });
+                })
                 
-            } catch (error) {
-                console.warn("Could not load city.glb, using fallback ground:", error.message);
-                createFallbackGround();
-            }
+                const maxVehicleForce = 4000
+                const maxSteerValue = 0.8;   
+const steeringIncrement = 0.02; 
+const steerRecover = 0.18;      
+                let forwardForce = 0
+                let steerValue = 0
+                let steerDirection = 0
 
-            // Vehicle setup - Moved outside to avoid closure issues
-            const chassisMesh = MeshBuilder.CreateBox("Chassis", {width: 1.2, height: 0.5, depth: 2.5}, scene);
-            chassisMesh.position.y = 5;
-            chassisMesh.position.x = 0;
-            chassisMesh.rotationQuaternion = new Quaternion();
-            
-            // Add vehicle body visual
-            const chassisMat = new StandardMaterial("chassisMat", scene);
-            chassisMat.diffuseColor = new Color3(0.8, 0.1, 0.1);
-            chassisMesh.material = chassisMat;
+                scene.onBeforeRenderObservable.add(()=>{
+                    forwardForce = 0
+                    steerDirection = 0
+                    if(controls.forward) forwardForce = 1
+                    if(controls.backward) forwardForce = -1
+                    if(controls.left) steerDirection = -1
+                    if(controls.right) steerDirection = 1
+                
+                    steerValue += steerDirection*steeringIncrement
+                    steerValue = Math.min(Math.max(steerValue, -maxSteerValue), maxSteerValue)
+                    steerValue *= 1-(1-Math.abs(steerDirection))*steerRecover
+                    vehicle.wheels[2].steering = steerValue
+                    vehicle.wheels[3].steering = steerValue
 
-            const chassisPhysicsShape = new PhysicsShapeConvexHull(chassisMesh, scene);
-            const chassisPhysicsBody = new PhysicsBody(chassisMesh, PhysicsMotionType.DYNAMIC, false, scene);
-            chassisPhysicsBody.shape = chassisPhysicsShape;
-            chassisPhysicsBody.setMassProperties({
-                centerOfMass: new Vector3(0, -0.3, 0),
-                mass: 1200
-            });
-            chassisPhysicsShape.filterMembershipMask = 2;
+                    vehicle.wheels[2].force = forwardForce*maxVehicleForce
+                    vehicle.wheels[3].force = forwardForce*maxVehicleForce
+                    
+                    vehicle.update()
+                    
+                    vehicle.wheels.forEach((wheel, index) => {
+                        if(!wheelMeshes[index]) return
+                        const wheelMesh = wheelMeshes[index]
+                        wheelMesh.position.copyFrom(wheel.transform.position)
+                        wheelMesh.rotationQuaternion.copyFrom(wheel.transform.rotationQuaternion)
+                        wheelMesh.rotate(Axis.Z, Math.PI/2, Space.LOCAL)
+                    })
+                    
+                    
+                })
 
-            // Create wheels
-            const wheelMat = new StandardMaterial("wheelMat", scene);
-            wheelMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
-            
-            const wheelMesh = MeshBuilder.CreateCylinder("WheelMesh", {height: 0.3, diameter: 0.6, tessellation: 24}, scene);
-            wheelMesh.material = wheelMat;
-            
-            const wheelMeshes = [
-                wheelMesh.clone("wheel1"),
-                wheelMesh.clone("wheel2"),
-                wheelMesh.clone("wheel3"),
-                wheelMesh.clone("wheel4")
-            ];
-            
-            wheelMeshes.forEach(mesh => {
-                mesh.rotationQuaternion = new Quaternion();
-            });
-
-            // Camera
-            const followCamera = new FollowCamera("FollowCam", new Vector3(-8, 3, 0), scene);
-            followCamera.heightOffset = 2;
-            followCamera.radius = 8;
-            followCamera.rotationOffset = 180;
-            followCamera.cameraAcceleration = 0.1;
-            followCamera.maxCameraSpeed = 40;
-            followCamera.lockedTarget = chassisMesh;
-            followCamera.fov = 1.2;
-            scene.activeCamera = followCamera;
-
-            // Initialize vehicle system
-            const tmp1 = new Vector3();
-            const tmp2 = new Vector3();
-            const tmpq1 = new Quaternion();
-            const upAxisLocal = new Vector3(0, 1, 0);
-            const rightAxisLocal = new Vector3(1, 0, 0);
-            const forwardAxisLocal = Vector3.Cross(upAxisLocal, rightAxisLocal);
-            forwardAxisLocal.normalize();
-            rightAxisLocal.normalize();
-
-            const raycastResult = new PhysicsRaycastResult();
-            
-            // Helper functions
-            const getBodyVelocityAtPoint = (body, point) => {
-                const r = point.subtract(body.transformNode.position);
-                const angularVelocity = body.getAngularVelocity();
-                const res = Vector3.Cross(angularVelocity, r);
-                const velocity = body.getLinearVelocity();
-                res.addInPlace(velocity);
-                return res;
+                return scene;
             };
 
-            const clampNumber = (num, a, b) => Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+            const tmp1 = new Vector3()
+            const tmp2 = new Vector3()
+            const tmpq1 = new Quaternion()
+            const upAxisLocal = new Vector3(0,1,0)
+            const rightAxisLocal = new Vector3(1,0,0)
+            const forwardAxisLocal = Vector3.Cross(upAxisLocal, rightAxisLocal)
+            forwardAxisLocal.normalize()
+            rightAxisLocal.normalize()
 
-            class RaycastWheel {
-                constructor(options) {
-                    this.positionLocal = options.positionLocal.clone();
-                    this.positionWorld = options.positionLocal.clone();
-                    this.suspensionAxisLocal = options.suspensionAxisLocal.clone();
-                    this.suspensionAxisWorld = this.suspensionAxisLocal.clone();
-                    this.axleAxisLocal = options.axleAxisLocal.clone();
-                    this.forwardAxisLocal = options.forwardAxisLocal.clone();
-                    this.sideForce = options.sideForce || 40;
-                    this.sideForcePositionRatio = options.sideForcePositionRatio || 0.1;
-                    this.radius = options.radius || 0.2;
-                    this.suspensionRestLength = options.suspensionRestLength || 0.5;
-                    this.prevSuspensionLength = this.suspensionRestLength;
-                    this.suspensionLength = this.suspensionRestLength;
-                    this.suspensionForce = options.suspensionForce || 15000;
-                    this.suspensionDamping = options.suspensionDamping || 0.1;
-                    this.rotationMultiplier = options.rotationMultiplier || 0.1;
-                    this.hitDistance = 0;
-                    this.hitNormal = new Vector3();
-                    this.hitPoint = new Vector3();
-                    this.inContact = false;
-                    
-                    this.steering = 0;
-                    this.rotation = 0;
-                    this.force = 0;
-
-                    this.transform = new TransformNode("WheelTransform", scene);
-                    this.transform.rotationQuaternion = new Quaternion();
-                }
-            }
-
-            class RaycastVehicle {
-                constructor(body, scene) {
-                    this.body = body;
-                    this.scene = scene;
-                    this.physicsEngine = scene.getPhysicsEngine();
-                    this.wheels = [];
-                    this.numberOfFramesToPredict = 60;
-                    this.predictionRatio = 0.6;
-                    this.nWheelsOnGround = 0;
-                    this.speed = 0;
-                    this.antiRollAxles = [];
-                    this.antiFlipForce = 3000;
-                    this.maxTiltAngle = 0.5;
-                    this.obstacleDetectionDistance = 8;
-                    this.obstacleAvoidanceForce = 200;
-                    this.collisionCount = 0;
+            const raycastResult = new PhysicsRaycastResult();
+            class RaycastVehicle{
+                constructor(body, scene){
+                    this.body = body
+                    this.scene = scene
+                    this.physicsEngine = body._physicsEngine
+                    this.wheels = []
+                    this.numberOfFramesToPredict = 60
+                    this.predictionRatio = 0.6
+                    this.nWheelsOnGround = 0
+                    this.speed = 0
+                    this.antiRollAxles = []
                 }
 
-                addWheel(wheel) {
-                    if (wheel && this.wheels) {
-                        this.wheels.push(wheel);
+                addWheel(wheel){
+                    this.wheels.push(wheel)
+                }
+                
+                removeWheel(wheel, index){
+                    if(index) this.wheels.splice(index, 1)
+                    this.wheels.splice(this.wheels.indexOf(wheel), 1)
+                }
+                
+                addAntiRollAxle(axle){
+                    this.antiRollAxles.push(axle)
+                }
+                
+                removeAntiRollAxle(axle, index){
+                    if(index) this.antiRollAxles.splice(index, 1)
+                    this.antiRollAxles.splice(this.antiRollAxles.indexOf(axle), 1)
+                }
+                
+                updateWheelTransform(wheel){
+                    Vector3.TransformCoordinatesToRef(wheel.positionLocal, this.body.transformNode.getWorldMatrix(), wheel.positionWorld)
+                    Vector3.TransformNormalToRef(wheel.suspensionAxisLocal, this.body.transformNode.getWorldMatrix(), wheel.suspensionAxisWorld)
+                }
+                
+                updateVehicleSpeed(){
+                    Vector3.TransformNormalToRef(this.body.getLinearVelocity(), this.body.transformNode.getWorldMatrix().clone().invert(), tmp1)
+                    this.speed = tmp1.z
+                }
+                
+                updateWheelSteering(wheel){
+                    Quaternion.RotationAxisToRef(wheel.suspensionAxisLocal.negateToRef(tmp1), wheel.steering, tmpq1)
+                    this.body.transformNode.rotationQuaternion.multiplyToRef(tmpq1, wheel.transform.rotationQuaternion)
+                    wheel.transform.rotationQuaternion.normalize()
+                    wheel.transform.computeWorldMatrix(true)
+                }
+                
+                updateWheelRaycast(wheel){
+                    tmp1.copyFrom(wheel.suspensionAxisWorld).scaleInPlace(wheel.suspensionRestLength).addInPlace(wheel.positionWorld)
+                    const rayStart = wheel.positionWorld
+                    const rayEnd = tmp1
+                    this.physicsEngine.raycastToRef(rayStart, rayEnd, raycastResult)
+                    if(!raycastResult.hasHit){
+                        wheel.inContact = false
+                        return
                     }
+                    wheel.hitPoint.copyFrom(raycastResult.hitPointWorld)
+                    wheel.hitNormal.copyFrom(raycastResult.hitNormalWorld)
+                    wheel.hitDistance = raycastResult.hitDistance
+                    wheel.inContact = true
+                    this.nWheelsOnGround++
                 }
                 
-                removeWheel(wheel, index) {
-                    if (index !== undefined && this.wheels && this.wheels[index]) {
-                        this.wheels.splice(index, 1);
-                    } else if (wheel && this.wheels) {
-                        const wheelIndex = this.wheels.indexOf(wheel);
-                        if (wheelIndex !== -1) {
-                            this.wheels.splice(wheelIndex, 1);
-                        }
-                    }
-                }
-                
-                addAntiRollAxle(axle) {
-                    if (axle && this.antiRollAxles) {
-                        this.antiRollAxles.push(axle);
-                    }
-                }
-                
-                removeAntiRollAxle(axle, index) {
-                    if (index !== undefined && this.antiRollAxles && this.antiRollAxles[index]) {
-                        this.antiRollAxles.splice(index, 1);
-                    } else if (axle && this.antiRollAxles) {
-                        const axleIndex = this.antiRollAxles.indexOf(axle);
-                        if (axleIndex !== -1) {
-                            this.antiRollAxles.splice(axleIndex, 1);
-                        }
-                    }
-                }
-                
-                updateWheelTransform(wheel) {
-                    if (!wheel || !this.body || !this.body.transformNode) return;
-                    
-                    Vector3.TransformCoordinatesToRef(wheel.positionLocal, this.body.transformNode.getWorldMatrix(), wheel.positionWorld);
-                    Vector3.TransformNormalToRef(wheel.suspensionAxisLocal, this.body.transformNode.getWorldMatrix(), wheel.suspensionAxisWorld);
-                }
-                
-                updateVehicleSpeed() {
-                    if (!this.body || !this.body.transformNode) return;
-                    
-                    Vector3.TransformNormalToRef(this.body.getLinearVelocity(), this.body.transformNode.getWorldMatrix().clone().invert(), tmp1);
-                    this.speed = tmp1.z;
-                }
-                
-                updateWheelSteering(wheel) {
-                    if (!wheel || !this.body || !this.body.transformNode) return;
-                    
-                    Quaternion.RotationAxisToRef(wheel.suspensionAxisLocal.negateToRef(tmp1), wheel.steering, tmpq1);
-                    this.body.transformNode.rotationQuaternion.multiplyToRef(tmpq1, wheel.transform.rotationQuaternion);
-                    wheel.transform.rotationQuaternion.normalize();
-                    wheel.transform.computeWorldMatrix(true);
-                }
-                
-                updateWheelRaycast(wheel) {
-                    if (!wheel || !this.physicsEngine) return;
-                    
-                    tmp1.copyFrom(wheel.suspensionAxisWorld).scaleInPlace(wheel.suspensionRestLength).addInPlace(wheel.positionWorld);
-                    const rayStart = wheel.positionWorld;
-                    const rayEnd = tmp1;
-                    
-                    this.physicsEngine.raycastToRef(rayStart, rayEnd, raycastResult);
-                    
-                    if (!raycastResult.hasHit) {
-                        wheel.inContact = false;
-                        return;
-                    }
-                    
-                    wheel.hitPoint.copyFrom(raycastResult.hitPointWorld);
-                    wheel.hitNormal.copyFrom(raycastResult.hitNormalWorld);
-                    wheel.hitDistance = raycastResult.hitDistance;
-                    wheel.inContact = true;
-                    this.nWheelsOnGround++;
-                }
-                
-                updateWheelSuspension(wheel) {
-                    if (!wheel || !this.body || !this.scene) return;
-                    
-                    if (!wheel.inContact) {
-                        wheel.prevSuspensionLength = wheel.suspensionLength;
-                        wheel.hitDistance = wheel.suspensionRestLength;
-                        return;
+                updateWheelSuspension(wheel){
+                    if(!wheel.inContact){
+                        wheel.prevSuspensionLength = wheel.suspensionLength
+                        wheel.hitDistance = wheel.suspensionRestLength
+                        return
                     }
                 
-                    let force = 0.0;
-                    wheel.suspensionLength = wheel.suspensionRestLength - wheel.hitDistance;
+                    let force = 0.0
+                    wheel.suspensionLength = wheel.suspensionRestLength - wheel.hitDistance
                     wheel.suspensionLength = clampNumber(wheel.suspensionLength, 0, wheel.suspensionRestLength);
                     const compressionRatio = wheel.suspensionLength / wheel.suspensionRestLength;
 
                     const compressionForce = wheel.suspensionForce * compressionRatio;
                     force += compressionForce;
 
-                    const rate = (wheel.prevSuspensionLength - wheel.suspensionLength) / this.scene.getPhysicsEngine().getTimeStep();
+                    const rate = (wheel.prevSuspensionLength - wheel.suspensionLength) / this.scene.getPhysicsEngine().getTimeStep()
                     wheel.prevSuspensionLength = wheel.suspensionLength;
 
-                    const dampingForce = rate * wheel.suspensionForce * wheel.suspensionDamping;
+                    const dampingForce = rate * wheel.suspensionForce * wheel.suspensionDamping
                     force -= dampingForce;
 
-                    const suspensionForce = Vector3.TransformNormalToRef(wheel.suspensionAxisLocal.negateToRef(tmp1), 
-                        this.body.transformNode.getWorldMatrix(), tmp1).scaleInPlace(force);
+                    const suspensionForce = Vector3.TransformNormalToRef(wheel.suspensionAxisLocal.negateToRef(tmp1), this.body.transformNode.getWorldMatrix(), tmp1).scaleInPlace(force)
 
-                    this.body.applyForce(suspensionForce, wheel.hitPoint);
+                    this.body.applyForce(
+                        suspensionForce,
+                        wheel.hitPoint
+                    )
                 }
                 
-                updateWheelSideForce(wheel) {
-                    if (!wheel || !wheel.inContact || !this.body || !this.scene) return;
-                    
-                    const tireWorldVel = getBodyVelocityAtPoint(this.body, wheel.positionWorld);
-                    const steeringDir = Vector3.TransformNormalToRef(wheel.axleAxisLocal, wheel.transform.getWorldMatrix(), tmp1);
-                    const steeringVel = Vector3.Dot(steeringDir, tireWorldVel);
-                    const desiredVelChange = -steeringVel;
-                    const desiredAccel = desiredVelChange / this.scene.getPhysicsEngine().getTimeStep();
-                    
+                updateWheelSideForce(wheel){
+                    if(!wheel.inContact) return
+                    const tireWorldVel = getBodyVelocityAtPoint(this.body, wheel.positionWorld)
+                    const steeringDir = Vector3.TransformNormalToRef(wheel.axleAxisLocal, wheel.transform.getWorldMatrix(), tmp1)
+                    const steeringVel = Vector3.Dot(steeringDir, tireWorldVel)
+                    const desiredVelChange = -steeringVel
+                    const desiredAccel = desiredVelChange / this.scene.getPhysicsEngine().getTimeStep()
                     this.body.applyForce(
                         steeringDir.scaleInPlace(wheel.sideForce * desiredAccel), 
                         Vector3.LerpToRef(wheel.hitPoint, wheel.positionWorld, wheel.sideForcePositionRatio, tmp2)
-                    );
+                    )
                 }
                 
-                updateWheelForce(wheel) {
-                    if (!wheel || !wheel.inContact || !this.body) return;
-                    
-                    if (wheel.force !== 0) {
-                        const forwardDirectionWorld = Vector3.TransformNormalToRef(wheel.forwardAxisLocal, 
-                            wheel.transform.getWorldMatrix(), tmp1).scaleInPlace(wheel.force);
-                        this.body.applyForce(forwardDirectionWorld, tmp2.copyFrom(wheel.hitPoint));
+                updateWheelForce(wheel){
+                    if(!wheel.inContact) return
+                    if(wheel.force !== 0){
+                        const forwardDirectionWorld = Vector3.TransformNormalToRef(wheel.forwardAxisLocal, wheel.transform.getWorldMatrix(), tmp1).scaleInPlace(wheel.force)
+                        this.body.applyForce(forwardDirectionWorld, tmp2.copyFrom(wheel.hitPoint))
                     }
                 }
                 
-                updateWheelRotation(wheel) {
-                    if (!wheel) return;
-                    
-                    wheel.rotation += this.speed * wheel.rotationMultiplier * wheel.radius;
-                    Quaternion.RotationAxisToRef(wheel.axleAxisLocal, wheel.rotation, tmpq1);
-                    wheel.transform.rotationQuaternion.multiplyToRef(tmpq1, wheel.transform.rotationQuaternion);
-                    wheel.transform.rotationQuaternion.normalize();
+                updateWheelRotation(wheel){
+                    wheel.rotation += this.speed*wheel.rotationMultiplier*wheel.radius
+                    Quaternion.RotationAxisToRef(wheel.axleAxisLocal, wheel.rotation, tmpq1)
+                    wheel.transform.rotationQuaternion.multiplyToRef(tmpq1, wheel.transform.rotationQuaternion)
+                    wheel.transform.rotationQuaternion.normalize()
                 }
                 
-                updateWheelTransformPosition(wheel) {
-                    if (!wheel) return;
-                    
-                    wheel.transform.position.copyFrom(wheel.positionWorld);
-                    wheel.transform.position.addInPlace(wheel.suspensionAxisWorld.scale(wheel.hitDistance - wheel.radius));
+                updateWheelTransformPosition(wheel){
+                    wheel.transform.position.copyFrom(wheel.positionWorld)
+                    wheel.transform.position.addInPlace(wheel.suspensionAxisWorld.scale(wheel.hitDistance-wheel.radius))
                 }
                 
-                updateVehiclePredictiveLanding() {
-                    if (this.nWheelsOnGround > 0 || !this.body || !this.physicsEngine || !this.scene) return;
+                updateVehiclePredictiveLanding(){
+                    if(this.nWheelsOnGround > 0) return
+                    const position = this.body.transformNode.position
+                    const gravity = tmp1.copyFrom(this.physicsEngine.gravity).scaleInPlace(this.body.getGravityFactor())
+                    const frameTime = this.scene.getPhysicsEngine().getTimeStep()
+                    const predictTime = this.numberOfFramesToPredict*frameTime
                     
-                    const position = this.body.transformNode.position;
-                    const gravity = tmp1.copyFrom(this.physicsEngine.gravity).scaleInPlace(this.body.getGravityFactor());
-                    const frameTime = this.scene.getPhysicsEngine().getTimeStep();
-                    const predictTime = this.numberOfFramesToPredict * frameTime;
-                    
-                    const predictedPosition = tmp2;
-                    predictedPosition.copyFrom(this.body.getLinearVelocity()).scaleInPlace(predictTime);
-                    predictedPosition.addInPlace(gravity.scaleInPlace(0.5 * predictTime * predictTime));
-                    predictedPosition.addInPlace(this.body.transformNode.position);
+                    const predictedPosition = tmp2
+                    predictedPosition.copyFrom(this.body.getLinearVelocity()).scaleInPlace(predictTime)
+                    predictedPosition.addInPlace(gravity.scaleInPlace(0.5*predictTime*predictTime))
+                    predictedPosition.addInPlace(this.body.transformNode.position)
                     
                     this.physicsEngine.raycastToRef(position, predictedPosition, raycastResult);
                 
                     if (raycastResult.hasHit) {
-                        const velocity = this.body.getLinearVelocity().normalize();
-                        const direction = raycastResult.hitPointWorld.subtractToRef(position, tmp1);
-                        const displacement = tmp2;
-                        displacement.x = velocity.x === 0 ? 0 : direction.x / velocity.x;
-                        displacement.y = velocity.y === 0 ? 0 : direction.y / velocity.y;
-                        displacement.z = velocity.z === 0 ? 0 : direction.z / velocity.z;
+                        const velocity = this.body.getLinearVelocity().normalize()
+                        const direction = raycastResult.hitPointWorld.subtractToRef(position, tmp1)
+                        const displacement = tmp2
+                        displacement.x = velocity.x==0?0:direction.x/velocity.x
+                        displacement.y = velocity.y==0?0:direction.y/velocity.y
+                        displacement.z = velocity.z==0?0:direction.z/velocity.z
+                        const nFrames = displacement.length()
+                        const R1 = Vector3.TransformNormalToRef(Axis.Y, this.body.transformNode.getWorldMatrix(), tmp1)
+                        const R2 = raycastResult.hitNormalWorld
+                        const rotationDifference = Vector3.CrossToRef(R1, R2, tmp2)
+                        const timeStepDuration = frameTime*nFrames
+                        const predictedAngularVelocity = rotationDifference.scaleToRef(1 / timeStepDuration, tmp2)
+
+                        this.body.setAngularVelocity(Vector3.LerpToRef(this.body.getAngularVelocity(), predictedAngularVelocity, this.predictionRatio, tmp1))
+                    }
+                    
+                }
+
+                update(){
+                    this.body.transformNode.computeWorldMatrix(true)
+                    this.nWheelsOnGround = 0
+                    this.updateVehicleSpeed()
+                    
+                    this.wheels.forEach((wheel, index) => {
+                        this.updateWheelTransform(wheel)
+                        this.updateWheelSteering(wheel)
+                        this.updateWheelRaycast(wheel)
+                        this.updateWheelSuspension(wheel)
+                        this.updateWheelForce(wheel)
+                        this.updateWheelSideForce(wheel)
+                        this.updateWheelTransformPosition(wheel)
+                        this.updateWheelRotation(wheel)
+                    })
+                    
+                    this.updateVehiclePredictiveLanding()
+                    
+                    this.antiRollAxles.forEach(axle => {
+                        const wheelA = this.wheels[axle.wheelA]
+                        const wheelB = this.wheels[axle.wheelB]
+                        if(!wheelA || !wheelB) return
+                        if(!wheelA.inContact && !wheelB.inContact) return
+                        const wheelOrder = wheelA.suspensionLength <= wheelB.suspensionLength ? [wheelA, wheelB] : [wheelB, wheelA]
+                        const maxCompressionRestLength = (wheelA.suspensionRestLength+wheelB.suspensionRestLength)/2
+                        const compressionDifference = wheelOrder[1].suspensionLength-wheelOrder[0].suspensionLength
+                        const compressionRatio = Math.min(compressionDifference,maxCompressionRestLength)/maxCompressionRestLength
                         
-                        const nFrames = displacement.length();
-                        const R1 = Vector3.TransformNormalToRef(Axis.Y, this.body.transformNode.getWorldMatrix(), tmp1);
-                        const R2 = raycastResult.hitNormalWorld;
-                        const rotationDifference = Vector3.CrossToRef(R1, R2, tmp2);
-                        const timeStepDuration = frameTime * nFrames;
-                        const predictedAngularVelocity = rotationDifference.scaleToRef(1 / timeStepDuration, tmp2);
-
-                        this.body.setAngularVelocity(Vector3.LerpToRef(
-                            this.body.getAngularVelocity(), 
-                            predictedAngularVelocity, 
-                            this.predictionRatio, 
-                            tmp1
-                        ));
-                    }
+                        const antiRollForce = tmp1.copyFrom(wheelOrder[0].suspensionAxisWorld).scaleInPlace(axle.force*compressionRatio)
+                        this.body.applyForce(
+                            antiRollForce, 
+                            wheelOrder[0].positionWorld
+                        )
+                        antiRollForce.copyFrom(wheelOrder[1].suspensionAxisWorld).negateInPlace().scaleInPlace(axle.force*compressionRatio)
+                        this.body.applyForce(
+                            antiRollForce, 
+                            wheelOrder[1].positionWorld
+                        )
+                    })
+                    
                 }
 
-                update() {
-                    if (!this.body || !this.body.transformNode) return;
+
+            }
+
+            class RaycastWheel{
+                constructor(options){
+                    this.positionLocal = options.positionLocal.clone()
+                    this.positionWorld = options.positionLocal.clone()
+                    this.suspensionAxisLocal = options.suspensionAxisLocal.clone()
+                    this.suspensionAxisWorld = this.suspensionAxisLocal.clone()
+                    this.axleAxisLocal = options.axleAxisLocal.clone()
+                    this.forwardAxisLocal = options.forwardAxisLocal.clone()
+                    this.sideForce = options.sideForce || 40
+                    this.sideForcePositionRatio = options.sideForcePositionRatio || 0.1
+                    this.radius = options.radius || 0.2
+                    this.suspensionRestLength = options.suspensionRestLength || 0.5
+                    this.prevSuspensionLength = this.suspensionRestLength
+                    this.suspensionLength = this.suspensionRestLength
+                    this.suspensionForce = options.suspensionForce || 15000
+                    this.suspensionDamping = options.suspensionDamping || 0.1
+                    this.rotationMultiplier = options.rotationMultiplier || 0.1
+                    this.hitDistance = 0
+                    this.hitNormal = new Vector3()
+                    this.hitPoint = new Vector3()
+                    this.inContact = false
                     
-                    this.body.transformNode.computeWorldMatrix(true);
-                    this.nWheelsOnGround = 0;
-                    this.updateVehicleSpeed();
-                    
-                    // Update all wheels
-                    if (this.wheels) {
-                        this.wheels.forEach((wheel, index) => {
-                            if (!wheel) return;
-                            this.updateWheelTransform(wheel);
-                            this.updateWheelSteering(wheel);
-                            this.updateWheelRaycast(wheel);
-                            this.updateWheelSuspension(wheel);
-                            this.updateWheelForce(wheel);
-                            this.updateWheelSideForce(wheel);
-                            this.updateWheelTransformPosition(wheel);
-                            this.updateWheelRotation(wheel);
-                        });
-                    }
-                    
-                    this.updateVehiclePredictiveLanding();
-                    
-                    // Apply anti-roll forces
-                    if (this.antiRollAxles) {
-                        this.antiRollAxles.forEach(axle => {
-                            if (!axle || !this.wheels) return;
-                            
-                            const wheelA = this.wheels[axle.wheelA];
-                            const wheelB = this.wheels[axle.wheelB];
-                            if (!wheelA || !wheelB) return;
-                            if (!wheelA.inContact && !wheelB.inContact) return;
-                            
-                            const wheelOrder = wheelA.suspensionLength <= wheelB.suspensionLength ? 
-                                            [wheelA, wheelB] : [wheelB, wheelA];
-                            const maxCompressionRestLength = (wheelA.suspensionRestLength + wheelB.suspensionRestLength) / 2;
-                            const compressionDifference = wheelOrder[1].suspensionLength - wheelOrder[0].suspensionLength;
-                            const compressionRatio = Math.min(compressionDifference, maxCompressionRestLength) / maxCompressionRestLength;
-                            
-                            const antiRollForce = tmp1.copyFrom(wheelOrder[0].suspensionAxisWorld)
-                                .scaleInPlace(axle.force * compressionRatio);
-                            this.body.applyForce(antiRollForce, wheelOrder[0].positionWorld);
-                            
-                            antiRollForce.copyFrom(wheelOrder[1].suspensionAxisWorld)
-                                .negateInPlace()
-                                .scaleInPlace(axle.force * compressionRatio);
-                            this.body.applyForce(antiRollForce, wheelOrder[1].positionWorld);
-                        });
-                    }
+                    this.steering = 0
+                    this.rotation = 0
+                    this.force = 0
+
+                    this.transform = new TransformNode("WheelTransform")
+                    this.transform.rotationQuaternion = new Quaternion()
                 }
             }
 
-            // Initialize vehicle
-            const vehicle = new RaycastVehicle(chassisPhysicsBody, scene);
-            vehicle.numberOfFramesToPredict = 80;
-            vehicle.predictionRatio = 0.7;
-            
-            // Enhanced wheel configuration
-            const wheelConfig = {
-                positionLocal: new Vector3(0.6, 0, -0.9),
-                suspensionRestLength: 0.7,
-                suspensionForce: 18000,
-                suspensionDamping: 0.2,
-                suspensionAxisLocal: new Vector3(0, -1, 0),
-                axleAxisLocal: new Vector3(1, 0, 0),
-                forwardAxisLocal: new Vector3(0, 0, 1),
-                sideForcePositionRatio: 0.15,
-                sideForce: 60,
-                radius: 0.3,
-                rotationMultiplier: 0.12
-            };
-
-            // Add wheels
-            vehicle.addWheel(new RaycastWheel(wheelConfig)); // Right rear
-            wheelConfig.positionLocal.set(-0.6, 0, -0.9); // Left rear
-            vehicle.addWheel(new RaycastWheel(wheelConfig));
-            wheelConfig.positionLocal.set(-0.6, 0, 0.8); // Left front
-            vehicle.addWheel(new RaycastWheel(wheelConfig));
-            wheelConfig.positionLocal.set(0.6, 0, 0.8); // Right front
-            vehicle.addWheel(new RaycastWheel(wheelConfig));
-            
-            // Enhanced anti-roll bars
-            vehicle.addAntiRollAxle({wheelA: 0, wheelB: 1, force: 12000}); // Rear axle
-            vehicle.addAntiRollAxle({wheelA: 2, wheelB: 3, force: 12000}); // Front axle
-            
-            // Controls
-            const controls = {
-                forward: false,
-                backward: false,
-                left: false,
-                right: false,
-                brake: false,
-                reset: false
-            };
-                
-            scene.onKeyboardObservable.add((kbInfo) => {
-                switch (kbInfo.type) {
-                    case KeyboardEventTypes.KEYDOWN:
-                        if(kbInfo.event.key === 'w' || kbInfo.event.key === 'W') controls.forward = true;
-                        if(kbInfo.event.key === 's' || kbInfo.event.key === 'S') controls.backward = true;
-                        if(kbInfo.event.key === 'a' || kbInfo.event.key === 'A') controls.left = true;
-                        if(kbInfo.event.key === 'd' || kbInfo.event.key === 'D') controls.right = true;
-                        if(kbInfo.event.key === ' ') controls.brake = true;
-                        if(kbInfo.event.key === 'r' || kbInfo.event.key === 'R') controls.reset = true;
-                        break;
-                    case KeyboardEventTypes.KEYUP:
-                        if(kbInfo.event.key === 'w' || kbInfo.event.key === 'W') controls.forward = false;
-                        if(kbInfo.event.key === 's' || kbInfo.event.key === 'S') controls.backward = false;
-                        if(kbInfo.event.key === 'a' || kbInfo.event.key === 'A') controls.left = false;
-                        if(kbInfo.event.key === 'd' || kbInfo.event.key === 'D') controls.right = false;
-                        if(kbInfo.event.key === ' ') controls.brake = false;
-                        break;
-                }
-            });
-            
-            // Vehicle control parameters
-            const maxVehicleForce = 2800;
-            const maxReverseForce = 1500;
-            const brakeForce = 4000;
-            const maxSteerValue = 0.7;
-            const steeringIncrement = 0.008;
-            const steerRecover = 0.06;
-            let forwardForce = 0;
-            let steerValue = 0;
-            let steerDirection = 0;
-            let currentSpeed = 0;
-            let lastUpdateTime = Date.now();
-
-            // Reset function
-            function resetVehicle() {
-                chassisMesh.position.set(0, 5, 0);
-                chassisMesh.rotationQuaternion = Quaternion.Identity();
-                chassisPhysicsBody.setLinearVelocity(Vector3.Zero());
-                chassisPhysicsBody.setAngularVelocity(Vector3.Zero());
-                steerValue = 0;
-                vehicle.collisionCount = 0;
-                updateInfo();
+            const getBodyVelocityAtPoint = (body, point) => {
+                const r = point.subtract(body.transformNode.position)
+                const angularVelocity = body.getAngularVelocity()
+                Vector3.Cross(angularVelocity, r)
+                const res = Vector3.Cross(angularVelocity, r)
+                const velocity = body.getLinearVelocity()
+                res.addInPlace(velocity)
+                return res;
             }
 
-            // Update info display
-            function updateInfo() {
-                document.getElementById('speed').textContent = Math.abs(Math.round(currentSpeed * 3.6));
-                document.getElementById('wheels').textContent = vehicle.nWheelsOnGround || 0;
-                document.getElementById('collisions').textContent = vehicle.collisionCount || 0;
-            }
+            const clampNumber = (num, a, b) => Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+            const lerp = (x, y, a) => x * (1 - a) + y * a;
+            // --- END OF YOUR UPLOADED lol.js CODE ---
 
-            // Obstacle detection and avoidance
-            function checkObstacles() {
-                const forwardRayLength = vehicle.obstacleDetectionDistance || 8;
-                const rightRayLength = forwardRayLength * 0.6;
-                
-                // Cast rays in forward direction
-                const rayStart = chassisMesh.position.add(new Vector3(0, 0.5, 0));
-                const rayEnd = rayStart.add(forwardAxisLocal.scale(forwardRayLength));
-                const result = new PhysicsRaycastResult();
-                scene.getPhysicsEngine().raycastToRef(rayStart, rayEnd, result);
-                
-                if (result.hasHit && result.hitDistance < forwardRayLength * 0.8) {
-                    // Calculate avoidance force
-                    const avoidanceDir = rightAxisLocal.scale(Math.sign(Vector3.Dot(result.hitNormalWorld, rightAxisLocal)));
-                    const forceMagnitude = (vehicle.obstacleAvoidanceForce || 200) * (1 - result.hitDistance / forwardRayLength);
-                    chassisPhysicsBody.applyForce(avoidanceDir.scale(forceMagnitude), chassisMesh.position);
-                    
-                    // Apply braking force
-                    const brakeVelocity = chassisPhysicsBody.getLinearVelocity().scale(-0.5);
-                    chassisPhysicsBody.applyForce(brakeVelocity.scale(1000), chassisMesh.position);
-                }
-            }
-
-            // Anti-flip system
-            function applyAntiFlip() {
-                const up = Vector3.TransformNormal(Axis.Y, chassisMesh.getWorldMatrix());
-                const dot = Vector3.Dot(up, Axis.Y);
-                
-                if (dot < 0.7) { // Vehicle is tilting too much
-                    const correctionTorque = Vector3.Cross(up, Axis.Y).scale(vehicle.antiFlipForce || 3000);
-                    chassisPhysicsBody.applyTorque(correctionTorque);
-                }
-            }
-
-            // Main update loop
-            scene.onBeforeRenderObservable.add(() => {
-                const deltaTime = (Date.now() - lastUpdateTime) / 1000;
-                lastUpdateTime = Date.now();
-                
-                // Reset vehicle if requested
-                if (controls.reset) {
-                    resetVehicle();
-                    controls.reset = false;
-                }
-                
-                // Calculate forces
-                forwardForce = 0;
-                steerDirection = 0;
-                
-                if (controls.forward) forwardForce = 1;
-                if (controls.backward) forwardForce = -1;
-                if (controls.left) steerDirection = -1;
-                if (controls.right) steerDirection = 1;
-                
-                // Emergency brake
-                if (controls.brake) {
-                    const brakeVelocity = chassisPhysicsBody.getLinearVelocity().scale(-0.3);
-                    chassisPhysicsBody.applyForce(brakeVelocity.scale(brakeForce), chassisMesh.position);
-                }
-                
-                // Steering calculation with speed-based sensitivity
-                const speedFactor = Math.max(0.3, 1 - Math.abs(currentSpeed) / 50);
-                steerValue += steerDirection * steeringIncrement * speedFactor;
-                steerValue = Math.min(Math.max(steerValue, -maxSteerValue), maxSteerValue);
-                steerValue *= 1 - (1 - Math.abs(steerDirection)) * steerRecover;
-                
-                // Apply steering to front wheels
-                if (vehicle.wheels && vehicle.wheels[2] && vehicle.wheels[3]) {
-                    vehicle.wheels[2].steering = steerValue;
-                    vehicle.wheels[3].steering = steerValue;
-                }
-                
-                // Apply force with speed limiting
-                const forceMultiplier = forwardForce > 0 ? maxVehicleForce : maxReverseForce;
-                const appliedForce = forwardForce * forceMultiplier * (1 - Math.abs(currentSpeed) / 80);
-                
-                if (vehicle.wheels && vehicle.wheels[2] && vehicle.wheels[3]) {
-                    vehicle.wheels[2].force = appliedForce;
-                    vehicle.wheels[3].force = appliedForce;
-                }
-                
-                // Update vehicle physics
-                vehicle.update();
-                
-                // Update current speed
-                currentSpeed = vehicle.speed || 0;
-                
-                // Update wheel visuals
-                if (vehicle.wheels) {
-                    vehicle.wheels.forEach((wheel, index) => {
-                        if (!wheelMeshes[index] || !wheel || !wheel.transform) return;
-                        const wheelMesh = wheelMeshes[index];
-                        wheelMesh.position.copyFrom(wheel.transform.position);
-                        wheelMesh.rotationQuaternion.copyFrom(wheel.transform.rotationQuaternion);
-                        wheelMesh.rotate(Axis.Z, Math.PI / 2, Space.LOCAL);
-                    });
-                }
-                
-                // Apply safety systems
-                checkObstacles();
-                applyAntiFlip();
-                
-                // Update info display
-                updateInfo();
-                
-                // Collision detection
-                if ((vehicle.nWheelsOnGround || 0) < 2 && Math.abs(currentSpeed) > 5) {
-                    vehicle.collisionCount = (vehicle.collisionCount || 0) + 1;
-                }
-            });
-
-            // Hide loading screen and show controls
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('info').style.display = 'block';
-            document.getElementById('controls').style.display = 'block';
-
-            // Start render loop
+            // Start the engine
+            const scene = await createScene();
             engine.runRenderLoop(function () {
                 scene.render();
             });
@@ -764,35 +509,7 @@
             });
         }
 
-        // Start the application
-        init().catch(error => {
-            console.error("Failed to initialize:", error);
-            document.getElementById('loading').innerHTML = `Error: ${error.message}<br>Creating fallback scene...`;
-            
-            // Try to create a basic scene even if initialization fails
-            setTimeout(() => {
-                const scene = new Scene(engine);
-                scene.clearColor = new Color4(0.4, 0.6, 0.8, 1.0);
-                
-                const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
-                light.intensity = 0.7;
-                
-                const camera = new FreeCamera("camera", new Vector3(0, 5, -10), scene);
-                camera.setTarget(Vector3.Zero());
-                camera.attachControl(canvas, true);
-                
-                const ground = MeshBuilder.CreateGround("ground", {width: 100, height: 100}, scene);
-                const groundMat = new StandardMaterial("groundMat", scene);
-                groundMat.diffuseColor = new Color3(0.3, 0.3, 0.3);
-                ground.material = groundMat;
-                
-                engine.runRenderLoop(function () {
-                    scene.render();
-                });
-                
-                document.getElementById('loading').style.display = 'none';
-            }, 1000);
-        });
+        init();
     </script>
 </body>
 </html>
