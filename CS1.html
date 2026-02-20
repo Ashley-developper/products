@@ -17,6 +17,9 @@
             height: 100%;
             touch-action: none;
         }
+        .author {
+            z-index: 1;
+        }
     </style>
     <!-- Babylon.js Core and Dependencies -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -26,7 +29,7 @@
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <p>Made by Agocrate (Zhanyi Zhou)</p>
+    <p class='author'>Made by Agocrate (Zhanyi Zhou)</p>
     <script>
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
