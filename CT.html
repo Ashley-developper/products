@@ -30,7 +30,7 @@
             opacity: 0.9;
         }
 
-        /* Message Bubble Tails (High Precision) */
+        /* Message Bubble Tails */
         .bubble-left::before {
             content: ""; position: absolute; top: 0; left: -8px;
             width: 0; height: 0; border-style: solid;
@@ -52,13 +52,21 @@
         @keyframes mic-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
 
         .transition-all { transition: all 0.2s ease-in-out; }
+        
+        /* Save Animation */
+        @keyframes success-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); background-color: #059669; }
+            100% { transform: scale(1); }
+        }
+        .save-success { animation: success-pop 0.4s ease-out; }
     </style>
 </head>
 <body class="flex items-center justify-center">
 
     <div class="w-full h-full flex bg-white overflow-hidden shadow-none">
         
-        <!-- 1. Left Minimal Navigation -->
+        <!-- Navigation -->
         <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-5 shrink-0">
             <div class="w-9 h-9 bg-gray-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer">
                  <i data-lucide="user" class="text-white w-6 h-6"></i>
@@ -80,11 +88,11 @@
             </div>
         </nav>
 
-        <!-- 2. Contacts/Chat List -->
+        <!-- Sidebar -->
         <aside class="w-[380px] border-r border-[#d1d7db] flex flex-col shrink-0 bg-white">
             <header class="p-4 flex flex-col space-y-4">
                 <div class="flex justify-between items-center px-1">
-                    <h1 class="text-[22px] font-bold text-[#111b21]">Chats</h1>
+                    <h1 class="text-[22px] font-bold text-[#111b21]">Agocrate Company Chats</h1>
                     <div class="flex space-x-4 text-[#54656f]">
                         <i data-lucide="square-pen" class="w-5 h-5 cursor-pointer"></i>
                         <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer"></i>
@@ -106,13 +114,13 @@
                             <span id="list-name" class="text-[17px] text-[#111b21] font-medium truncate">AI Roleplay</span>
                             <span class="text-[12px] text-[#00a884] font-medium">Online</span>
                         </div>
-                        <p id="list-preview" class="text-[14px] text-[#667781] truncate italic">Puter.js Connected</p>
+                        <p id="list-preview" class="text-[14px] text-[#667781] truncate italic">Connected</p>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <!-- 3. Main Conversation -->
+        <!-- Main Chat Area -->
         <main class="flex-1 flex flex-col relative bg-[#f0f2f5]">
             <header class="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 shrink-0 z-20 border-b border-[#d1d7db]">
                 <div class="flex items-center space-x-3">
@@ -120,7 +128,7 @@
                         <i data-lucide="user" class="text-white w-6 h-6"></i>
                     </div>
                     <div>
-                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">AI Roleplay</h2>
+                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">Agocrate</h2>
                         <p id="chat-status" class="text-[12px] text-[#667781]">online</p>
                     </div>
                 </div>
@@ -158,43 +166,45 @@
             </footer>
         </main>
 
-        <!-- Personality Panel (Y Key) -->
+        <!-- Personality Config Modal (Toggle with Y) -->
         <div id="dev-modal" class="absolute inset-0 z-50 bg-[#0c1317]/85 flex items-center justify-center hidden-el opacity-0 transition-all duration-300 backdrop-blur-md">
             <div class="bg-white w-[500px] rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform">
                 <div class="bg-[#008069] p-5 text-white flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <i data-lucide="terminal" class="w-6 h-6"></i>
-                        <h2 class="text-lg font-semibold uppercase tracking-widest">AI Config</h2>
+                        <h2 class="text-lg font-semibold uppercase tracking-widest">AI Character Settings</h2>
                     </div>
                     <button id="close-modal" class="hover:bg-white/20 p-1 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
                 </div>
                 <div class="p-8 space-y-6">
                     <div>
                         <label class="block text-xs font-bold text-[#008069] mb-2">DISPLAY NAME</label>
-                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 py-2 focus:border-[#00a884] outline-none transition-colors text-lg">
+                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 py-2 focus:border-[#00a884] outline-none transition-colors text-lg" placeholder="e.g. Bot Assistant">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-[#008069] mb-2">SYSTEM INSTRUCTION</label>
-                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm h-48 resize-none focus:ring-2 focus:ring-[#00a884] outline-none leading-relaxed"></textarea>
+                        <label class="block text-xs font-bold text-[#008069] mb-2">PERSONALITY / SYSTEM INSTRUCTION</label>
+                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm h-48 resize-none focus:ring-2 focus:ring-[#00a884] outline-none leading-relaxed" placeholder="Describe how the AI should behave..."></textarea>
                     </div>
                     <div class="flex gap-4 pt-4">
-                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-4 rounded-xl shadow-lg hover:bg-[#008069] font-bold transition-all">SAVE & UPDATE</button>
-                        <button id="clear-btn" class="px-6 py-4 text-red-500 hover:bg-red-50 rounded-xl font-semibold transition-colors">RESET</button>
+                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-4 rounded-xl shadow-lg hover:bg-[#008069] font-bold transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="check" class="w-5 h-5"></i> APPLY SETTINGS
+                        </button>
+                        <button id="clear-btn" class="px-6 py-4 text-red-500 hover:bg-red-50 rounded-xl font-semibold transition-colors">RESET CHAT</button>
                     </div>
                 </div>
                 <div class="bg-gray-100 p-4 text-center">
-                    <p class="text-[11px] text-gray-500 font-medium">PRESS <span class="bg-gray-200 px-1 py-0.5 rounded border border-gray-300 text-black">[ Y ]</span> TO TOGGLE</p>
+                    <p class="text-[11px] text-gray-500 font-medium">HOTKEY: <span class="bg-gray-200 px-1 py-0.5 rounded border border-gray-300 text-black">[ Y ]</span></p>
                 </div>
             </div>
         </div>
     </div>
 
 <script>
-    // Configuration
-    // Fixed: Puter AI expects 'assistant' role, not 'model'
-    let messages = [{ id: '1', role: 'assistant', text: "Hey! Puter AI is ready. No API Key required. Press [Y] to edit my character." }];
+    // State
+    let messages = [{ id: '1', role: 'assistant', text: "Chat ready! Press [Y] to customize my personality." }];
     let characterName = 'AI Roleplay';
-    let systemPrompt = 'You are a friend chatting on WhatsApp. Use informal language and emojis. Be concise. Reply in English unless addressed in Chinese.';
+    // Default system prompt
+    let systemPrompt = 'You are a friendly person on WhatsApp. Use emojis, short sentences, and casual tone.';
     
     let isListening = false;
     let recognition = null;
@@ -220,14 +230,16 @@
     function renderMessages() {
         chatContainer.innerHTML = '';
         messages.forEach(msg => {
+            if (msg.role === 'system') return; // Don't show system messages in UI
+            
             const isUser = msg.role === 'user';
             const div = document.createElement('div');
-            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-3`;
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-3 animate-in fade-in slide-in-from-bottom-2 duration-300`;
             
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
             div.innerHTML = `
-                <div class="relative px-3 py-1.5 max-w-[85%] sm:max-w-[65%] shadow-sm ${isUser ? 'bubble-right bg-[#d9fdd3]' : 'bubble-left bg-white text-[#111b21]'}">
+                <div class="relative px-3 py-1.5 max-w-[85%] shadow-sm ${isUser ? 'bubble-right bg-[#d9fdd3]' : 'bubble-left bg-white text-[#111b21]'}">
                     <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12 leading-relaxed">${msg.text}</div>
                     <div class="absolute bottom-1 right-2 flex items-center space-x-1">
                         <span class="text-[10px] text-[#667781]">${time}</span>
@@ -240,15 +252,16 @@
         lucide.createIcons({ root: chatContainer });
         chatContainer.scrollTop = chatContainer.scrollHeight;
         
-        const lastMsg = messages[messages.length - 1];
-        document.getElementById('list-preview').textContent = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
+        const lastVisible = [...messages].reverse().find(m => m.role !== 'system');
+        if (lastVisible) {
+            document.getElementById('list-preview').textContent = lastVisible.text.substring(0, 30) + (lastVisible.text.length > 30 ? '...' : '');
+        }
     }
 
     async function handleSend(override) {
         const text = (override || chatInput.value).trim();
         if (!text) return;
 
-        // Clear input early to prevent double submission
         if (!override) {
             chatInput.value = '';
             chatInput.style.height = 'auto';
@@ -261,15 +274,17 @@
         document.getElementById('chat-status').textContent = 'typing...';
 
         try {
-            // Using Puter AI Chat directly
-            const response = await puter.ai.chat([
+            // Build the conversation payload
+            // Always put the System Prompt at the TOP of the array sent to Puter
+            const puterMessages = [
                 { role: 'system', content: systemPrompt },
-                ...messages.slice(-10).map(m => ({ 
-                    role: m.role === 'assistant' ? 'assistant' : m.role, 
-                    content: m.text 
+                ...messages.slice(-10).map(m => ({
+                    role: m.role === 'assistant' ? 'assistant' : 'user',
+                    content: m.text
                 }))
-            ], { model: 'gpt-4o-mini' });
+            ];
 
+            const response = await puter.ai.chat(puterMessages, { model: 'gpt-4o-mini' });
             const reply = typeof response === 'string' ? response : response.message.content;
             
             messages.push({ role: 'assistant', text: reply });
@@ -277,13 +292,12 @@
             renderMessages();
         } catch (err) {
             console.error('Puter AI Error:', err);
-            messages.push({ role: 'assistant', text: "Error: " + (err.message || "Failed to connect to Puter AI.") });
+            messages.push({ role: 'assistant', text: "Error: AI disconnected. Check your connection." });
             document.getElementById('chat-status').textContent = 'online';
             renderMessages();
         }
     }
 
-    // Speech functionality
     function setupSpeech() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!Speech) return;
@@ -342,10 +356,9 @@
             updateUIState();
         };
 
-        // Fixed: Ensure Enter sends message and prevents newline
         chatInput.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Stop newline
+                e.preventDefault();
                 handleSend();
             }
         };
@@ -356,16 +369,37 @@
             }
         };
 
-        document.getElementById('save-btn').onclick = () => {
+        // SAVE LOGIC
+        document.getElementById('save-btn').onclick = async function() {
+            const btn = this;
             characterName = document.getElementById('char-name-input').value || 'AI Roleplay';
             systemPrompt = document.getElementById('sys-prompt-input').value || '';
+            
             chatTitle.textContent = characterName;
             listName.textContent = characterName;
-            toggleModal(false);
+
+            // Visual feedback
+            btn.classList.add('save-success');
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> APPLYING...';
+            lucide.createIcons({root: btn});
+
+            // "Soft reset" history to prioritize new personality
+            // We clear old history and leave a invisible "system" marker
+            messages = [
+                { role: 'assistant', text: `System: Character updated to ${characterName}. Personality applied.` }
+            ];
+            
+            setTimeout(() => {
+                btn.classList.remove('save-success');
+                btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> APPLY SETTINGS';
+                lucide.createIcons({root: btn});
+                toggleModal(false);
+                renderMessages();
+            }, 600);
         };
 
         document.getElementById('clear-btn').onclick = () => {
-            messages = [{ role: 'assistant', text: 'History reset. Ready to chat!' }];
+            messages = [{ role: 'assistant', text: 'History reset. Say hello!' }];
             renderMessages();
             toggleModal(false);
         };
