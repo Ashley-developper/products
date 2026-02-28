@@ -166,7 +166,12 @@
         // Listen for Messages
         onValue(ref(db, 'messages'), (snapshot) => {
             const data = snapshot.val();
-            messages = data ? Object.values(data) : [];
+            if (data) {
+                messages = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+                messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            } else {
+                messages = [];
+            }
             renderMessages();
         });
 
@@ -183,7 +188,7 @@
             
             div.innerHTML = `
                 <div class="relative px-3 py-1.5 max-w-[85%] shadow-sm ${isUser ? 'bubble-right bg-[#d9fdd3]' : 'bubble-left bg-white text-[#111b21]'}">
-                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12">${msg.text}</div>
+                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12">${msg.text || ''}</div>
                     <div class="absolute bottom-1 right-2 flex items-center space-x-1">
                         <span class="text-[10px] text-[#667781]">${time}</span>
                         ${isUser ? '<i data-lucide="check-check" class="w-3.5 h-3.5 text-[#53bdeb]"></i>' : ''}
@@ -196,7 +201,8 @@
         chatContainer.scrollTop = chatContainer.scrollHeight;
         
         if (messages.length > 0) {
-            document.getElementById('list-preview').textContent = messages[messages.length - 1].text.substring(0, 30) + '...';
+            const lastMsg = messages[messages.length - 1].text || '';
+            document.getElementById('list-preview').textContent = lastMsg.substring(0, 30) + (lastMsg.length > 30 ? '...' : '');
         }
     }
 
@@ -208,31 +214,43 @@
         chatInput.style.height = 'auto';
 
         // 1. Save User Message to RTDB
-        const userMsg = { role: 'user', text, timestamp: Date.now() };
-        push(ref(db, 'messages'), userMsg);
+        const userMsg = { role: 'user', text: text, timestamp: Date.now() };
+        try {
+            push(ref(db, 'messages'), userMsg);
+        } catch (e) {
+            console.error("Firebase push error:", e);
+        }
 
         document.getElementById('chat-status').textContent = 'typing...';
 
         try {
             // 2. Prepare Context for Puter AI
-            // We strictly include the systemPrompt at the start
+            // 核心修复：确保 systemPrompt 永远是第一条，并且是最新的
             const context = [
                 { role: 'system', content: systemPrompt },
-                ...messages.slice(-8).map(m => ({
+                ...messages.slice(-15).map(m => ({
                     role: m.role === 'assistant' ? 'assistant' : 'user',
-                    content: m.text
+                    content: m.text || ''
                 })),
                 { role: 'user', content: text }
             ];
 
             const response = await puter.ai.chat(context, { model: 'gpt-4o-mini' });
-            const reply = typeof response === 'string' ? response : response.message.content;
+            
+            let reply = "";
+            if (typeof response === 'string') {
+                reply = response;
+            } else if (response && response.message && response.message.content) {
+                reply = response.message.content;
+            }
+
+            if (!reply) throw new Error("Empty response");
 
             // 3. Save Assistant Reply to RTDB
             push(ref(db, 'messages'), { role: 'assistant', text: reply, timestamp: Date.now() });
             document.getElementById('chat-status').textContent = 'online';
         } catch (err) {
-            console.error(err);
+            console.error("AI Error:", err);
             document.getElementById('chat-status').textContent = 'online';
         }
     }
@@ -260,14 +278,20 @@
         document.getElementById('save-btn').onclick = () => {
             const name = document.getElementById('char-name-input').value;
             const prompt = document.getElementById('sys-prompt-input').value;
-            set(ref(db, 'config'), { name, prompt });
-            devModal.classList.add('hidden-el');
+            set(ref(db, 'config'), { name, prompt }).then(() => {
+                // 更新本地变量以确保下次 handleSend 立即生效
+                characterName = name;
+                systemPrompt = prompt;
+                devModal.classList.add('hidden-el');
+            });
         };
 
         // Clear Chat in Firebase
         document.getElementById('clear-btn').onclick = () => {
-            remove(ref(db, 'messages'));
-            devModal.classList.add('hidden-el');
+            if(confirm("Are you sure you want to clear chat history?")) {
+                remove(ref(db, 'messages'));
+                devModal.classList.add('hidden-el');
+            }
         };
     }
 
