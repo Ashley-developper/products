@@ -3,34 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Desktop Simulation - Puter AI Edition</title>
+    <title>WhatsApp RTDB Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Integration of Puter.js -->
     <script src="https://js.puter.com/v2/"></script>
     <style>
         :root {
-            --wa-bg-main: #f0f2f5;
             --wa-bg-chat: #efeae2;
-            --wa-sidebar: #111b21;
-            --wa-green: #00a884;
             --wa-bubble-self: #d9fdd3;
-            --wa-bubble-other: #ffffff;
-            --wa-text-primary: #111b21;
-            --wa-text-secondary: #667781;
         }
-
         body { background-color: #0c1317; height: 100vh; width: 100vw; overflow: hidden; margin: 0; }
-
-        /* WhatsApp Doodles Background */
         .chat-wallpaper {
             background-color: var(--wa-bg-chat);
             background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
             background-blend-mode: overlay;
-            opacity: 0.9;
         }
-
-        /* Message Bubble Tails */
         .bubble-left::before {
             content: ""; position: absolute; top: 0; left: -8px;
             width: 0; height: 0; border-style: solid;
@@ -41,206 +28,162 @@
             width: 0; height: 0; border-style: solid;
             border-width: 0 0 10px 10px; border-color: transparent transparent transparent #d9fdd3;
         }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
-
         .hidden-el { display: none !important; }
-        .pulse-mic { animation: mic-pulse 1.2s infinite; color: #ef4444; }
-        @keyframes mic-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
-
-        .transition-all { transition: all 0.2s ease-in-out; }
-        
-        /* Save Animation */
-        @keyframes success-pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); background-color: #059669; }
-            100% { transform: scale(1); }
-        }
-        .save-success { animation: success-pop 0.4s ease-out; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
     </style>
 </head>
 <body class="flex items-center justify-center">
 
     <div class="w-full h-full flex bg-white overflow-hidden shadow-none">
-        
-        <!-- Navigation -->
+        <!-- 1. Left Nav -->
         <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-5 shrink-0">
-            <div class="w-9 h-9 bg-gray-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer">
-                 <i data-lucide="user" class="text-white w-6 h-6"></i>
-            </div>
-            <div class="flex flex-col space-y-4 w-full items-center">
-                <div class="p-2 bg-[#374248] rounded-full text-white cursor-pointer" title="Chats">
-                    <i data-lucide="message-square" class="w-6 h-6"></i>
-                </div>
-                <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer transition-all">
-                    <i data-lucide="circle-dashed" class="w-6 h-6"></i>
-                </div>
-                <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer transition-all">
-                    <i data-lucide="rss" class="w-6 h-6"></i>
-                </div>
-            </div>
+            <div class="w-9 h-9 bg-gray-500 rounded-full flex items-center justify-center overflow-hidden"><i data-lucide="user" class="text-white w-6 h-6"></i></div>
+            <div class="p-2 bg-[#374248] rounded-full text-white cursor-pointer"><i data-lucide="message-square" class="w-6 h-6"></i></div>
             <div class="flex-1"></div>
-            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer transition-all">
-                <i data-lucide="settings" class="w-6 h-6"></i>
-            </div>
+            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer" id="settings-trigger"><i data-lucide="settings" class="w-6 h-6"></i></div>
         </nav>
 
-        <!-- Sidebar -->
+        <!-- 2. Sidebar -->
         <aside class="w-[380px] border-r border-[#d1d7db] flex flex-col shrink-0 bg-white">
             <header class="p-4 flex flex-col space-y-4">
-                <div class="flex justify-between items-center px-1">
-                    <h1 class="text-[22px] font-bold text-[#111b21]">Agocrate Company Chats</h1>
-                    <div class="flex space-x-4 text-[#54656f]">
-                        <i data-lucide="square-pen" class="w-5 h-5 cursor-pointer"></i>
-                        <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer"></i>
-                    </div>
-                </div>
-                <div class="bg-[#f0f2f5] h-9 rounded-lg flex items-center px-3 focus-within:bg-white focus-within:shadow-sm ring-1 ring-transparent focus-within:ring-[#00a884] transition-all">
+                <h1 class="text-[22px] font-bold text-[#111b21]">Chats</h1>
+                <div class="bg-[#f0f2f5] h-9 rounded-lg flex items-center px-3">
                     <i data-lucide="search" class="w-4 h-4 text-[#54656f] mr-4"></i>
-                    <input type="text" placeholder="Search or start new chat" class="bg-transparent text-[14px] w-full outline-none text-[#3b4a54]">
+                    <input type="text" placeholder="Search..." class="bg-transparent text-[14px] w-full outline-none">
                 </div>
             </header>
-            
             <div class="flex-1 overflow-y-auto">
                 <div class="bg-[#f0f2f5] px-4 py-3 flex items-center space-x-3 cursor-pointer">
-                    <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center shrink-0">
-                        <i data-lucide="user-round" class="text-white w-7 h-7"></i>
-                    </div>
-                    <div class="flex-1 min-w-0 border-b border-transparent">
-                        <div class="flex justify-between items-baseline mb-0.5">
-                            <span id="list-name" class="text-[17px] text-[#111b21] font-medium truncate">AI Roleplay</span>
-                            <span class="text-[12px] text-[#00a884] font-medium">Online</span>
+                    <div class="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center shrink-0"><i data-lucide="bot" class="text-white w-7 h-7"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline">
+                            <span id="list-name" class="text-[17px] font-medium text-[#111b21]">AI Companion</span>
+                            <span class="text-[12px] text-[#00a884]">Online</span>
                         </div>
-                        <p id="list-preview" class="text-[14px] text-[#667781] truncate italic">Connected</p>
+                        <p id="list-preview" class="text-[14px] text-[#667781] truncate">Waiting for messages...</p>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Chat Area -->
+        <!-- 3. Main Chat -->
         <main class="flex-1 flex flex-col relative bg-[#f0f2f5]">
-            <header class="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 shrink-0 z-20 border-b border-[#d1d7db]">
+            <header class="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 border-b border-[#d1d7db]">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <i data-lucide="user" class="text-white w-6 h-6"></i>
-                    </div>
+                    <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center"><i data-lucide="bot" class="text-white w-6 h-6"></i></div>
                     <div>
-                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">Agocrate</h2>
+                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">AI Companion</h2>
                         <p id="chat-status" class="text-[12px] text-[#667781]">online</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-5 text-[#54656f]">
-                    <i data-lucide="video" class="w-5 h-5 cursor-pointer"></i>
-                    <i data-lucide="phone" class="w-5 h-5 cursor-pointer"></i>
-                    <div class="w-[1px] h-4 bg-[#d1d7db]"></div>
-                    <i data-lucide="search" class="w-5 h-5 cursor-pointer"></i>
-                    <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer"></i>
-                </div>
             </header>
 
-            <div id="chat-container" class="flex-1 overflow-y-auto px-12 py-6 space-y-3 chat-wallpaper relative scroll-smooth">
-                <!-- Messages -->
-            </div>
+            <div id="chat-container" class="flex-1 overflow-y-auto px-12 py-6 space-y-3 chat-wallpaper relative"></div>
 
-            <footer class="min-h-[62px] bg-[#f0f2f5] flex items-end px-4 py-3 space-x-2 shrink-0 z-20">
-                <button class="p-2 text-[#54656f] hover:bg-[#d1d7db] rounded-full mb-1">
-                    <i data-lucide="plus" class="w-6 h-6"></i>
+            <footer class="min-h-[62px] bg-[#f0f2f5] flex items-end px-4 py-3 space-x-2">
+                <div class="flex-1 flex items-center bg-white rounded-xl px-4 min-h-[44px] shadow-sm">
+                    <textarea id="chat-input" class="w-full bg-transparent max-h-[150px] py-2.5 outline-none text-[15px] resize-none" placeholder="Type a message" rows="1"></textarea>
+                </div>
+                <button id="send-btn" class="p-2 text-[#00a884] hover:bg-[#d1d7db] rounded-full transition-all">
+                    <i data-lucide="send-horizontal" class="w-6 h-6"></i>
                 </button>
-                
-                <div class="flex-1 flex items-center bg-white rounded-xl px-4 min-h-[44px] shadow-sm ring-1 ring-inset ring-transparent focus-within:ring-[#00a884] transition-all">
-                    <button class="mr-3 text-[#54656f]"><i data-lucide="smile" class="w-6 h-6"></i></button>
-                    <textarea id="chat-input" class="w-full bg-transparent max-h-[150px] py-2.5 outline-none text-[15px] resize-none leading-tight" placeholder="Type a message" rows="1"></textarea>
-                </div>
-
-                <div class="flex items-center mb-1">
-                    <button id="mic-btn" class="p-2 text-[#54656f] hover:bg-[#d1d7db] rounded-full transition-all">
-                        <i data-lucide="mic-off" class="w-6 h-6" id="mic-icon"></i>
-                    </button>
-                    <button id="send-btn" class="hidden-el p-2 text-[#00a884] hover:bg-[#d1d7db] rounded-full transition-all">
-                        <i data-lucide="send-horizontal" class="w-6 h-6"></i>
-                    </button>
-                </div>
             </footer>
         </main>
 
-        <!-- Personality Config Modal (Toggle with Y) -->
-        <div id="dev-modal" class="absolute inset-0 z-50 bg-[#0c1317]/85 flex items-center justify-center hidden-el opacity-0 transition-all duration-300 backdrop-blur-md">
-            <div class="bg-white w-[500px] rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform">
+        <!-- Config Modal -->
+        <div id="dev-modal" class="absolute inset-0 z-50 bg-[#0c1317]/85 flex items-center justify-center hidden-el">
+            <div class="bg-white w-[500px] rounded-2xl shadow-2xl overflow-hidden">
                 <div class="bg-[#008069] p-5 text-white flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <i data-lucide="terminal" class="w-6 h-6"></i>
-                        <h2 class="text-lg font-semibold uppercase tracking-widest">AI Character Settings</h2>
-                    </div>
-                    <button id="close-modal" class="hover:bg-white/20 p-1 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    <h2 class="text-lg font-semibold uppercase tracking-widest">Character Memory Settings</h2>
+                    <button id="close-modal"><i data-lucide="x" class="w-6 h-6"></i></button>
                 </div>
                 <div class="p-8 space-y-6">
                     <div>
-                        <label class="block text-xs font-bold text-[#008069] mb-2">DISPLAY NAME</label>
-                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 py-2 focus:border-[#00a884] outline-none transition-colors text-lg" placeholder="e.g. Bot Assistant">
+                        <label class="block text-xs font-bold text-[#008069] mb-2">CHARACTER NAME</label>
+                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 py-2 outline-none focus:border-[#00a884]">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-[#008069] mb-2">PERSONALITY / SYSTEM INSTRUCTION</label>
-                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm h-48 resize-none focus:ring-2 focus:ring-[#00a884] outline-none leading-relaxed" placeholder="Describe how the AI should behave..."></textarea>
+                        <label class="block text-xs font-bold text-[#008069] mb-2">SYSTEM PERSONALITY (MEMORY)</label>
+                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm h-48 resize-none outline-none focus:ring-2 focus:ring-[#00a884]"></textarea>
                     </div>
-                    <div class="flex gap-4 pt-4">
-                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-4 rounded-xl shadow-lg hover:bg-[#008069] font-bold transition-all flex items-center justify-center gap-2">
-                            <i data-lucide="check" class="w-5 h-5"></i> APPLY SETTINGS
-                        </button>
-                        <button id="clear-btn" class="px-6 py-4 text-red-500 hover:bg-red-50 rounded-xl font-semibold transition-colors">RESET CHAT</button>
+                    <div class="flex gap-4">
+                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-4 rounded-xl shadow-lg hover:bg-[#008069] font-bold">SAVE TO CLOUD</button>
+                        <button id="clear-btn" class="px-6 py-4 text-red-500 hover:bg-red-50 rounded-xl font-semibold">RESET HISTORY</button>
                     </div>
-                </div>
-                <div class="bg-gray-100 p-4 text-center">
-                    <p class="text-[11px] text-gray-500 font-medium">HOTKEY: <span class="bg-gray-200 px-1 py-0.5 rounded border border-gray-300 text-black">[ Y ]</span></p>
                 </div>
             </div>
         </div>
     </div>
 
-<script>
-    // State
-    let messages = [{ id: '1', role: 'assistant', text: "Chat ready! Press [Y] to customize my personality." }];
-    let characterName = 'AI Roleplay';
-    // Default system prompt
-    let systemPrompt = 'You are a friendly person on WhatsApp. Use emojis, short sentences, and casual tone.';
-    
-    let isListening = false;
-    let recognition = null;
+<script type="module">
+    // --- 1. Firebase RTDB Integration ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAhd2QZhg_k0J5-A7BKgiM6oc5N2PwYz64",
+        authDomain: "ashley-6f99c.firebaseapp.com",
+        databaseURL: "https://ashley-6f99c-default-rtdb.firebaseio.com",
+        projectId: "ashley-6f99c",
+        storageBucket: "ashley-6f99c.firebasestorage.app",
+        messagingSenderId: "210818892386",
+        appId: "1:210818892386:web:3e631daf31baf1e91c873b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- 2. State & Elements ---
+    let messages = [];
+    let characterName = "AI Companion";
+    let systemPrompt = "You are a friendly person on WhatsApp. Be concise and use emojis.";
 
     const chatContainer = document.getElementById('chat-container');
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
-    const micBtn = document.getElementById('mic-btn');
-    const micIcon = document.getElementById('mic-icon');
     const chatTitle = document.getElementById('chat-title');
     const listName = document.getElementById('list-name');
     const devModal = document.getElementById('dev-modal');
 
+    // --- 3. Initial Load from Firebase ---
     function init() {
         lucide.createIcons();
-        document.getElementById('char-name-input').value = characterName;
-        document.getElementById('sys-prompt-input').value = systemPrompt;
-        renderMessages();
-        setupSpeech();
+        
+        // Listen for Character Config
+        onValue(ref(db, 'config'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                characterName = data.name || characterName;
+                systemPrompt = data.prompt || systemPrompt;
+                chatTitle.textContent = characterName;
+                listName.textContent = characterName;
+                document.getElementById('char-name-input').value = characterName;
+                document.getElementById('sys-prompt-input').value = systemPrompt;
+            }
+        });
+
+        // Listen for Messages
+        onValue(ref(db, 'messages'), (snapshot) => {
+            const data = snapshot.val();
+            messages = data ? Object.values(data) : [];
+            renderMessages();
+        });
+
         setupEvents();
     }
 
     function renderMessages() {
         chatContainer.innerHTML = '';
         messages.forEach(msg => {
-            if (msg.role === 'system') return; // Don't show system messages in UI
-            
             const isUser = msg.role === 'user';
             const div = document.createElement('div');
-            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-3 animate-in fade-in slide-in-from-bottom-2 duration-300`;
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-3`;
+            const time = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
             div.innerHTML = `
                 <div class="relative px-3 py-1.5 max-w-[85%] shadow-sm ${isUser ? 'bubble-right bg-[#d9fdd3]' : 'bubble-left bg-white text-[#111b21]'}">
-                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12 leading-relaxed">${msg.text}</div>
+                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12">${msg.text}</div>
                     <div class="absolute bottom-1 right-2 flex items-center space-x-1">
                         <span class="text-[10px] text-[#667781]">${time}</span>
                         ${isUser ? '<i data-lucide="check-check" class="w-3.5 h-3.5 text-[#53bdeb]"></i>' : ''}
@@ -252,159 +195,80 @@
         lucide.createIcons({ root: chatContainer });
         chatContainer.scrollTop = chatContainer.scrollHeight;
         
-        const lastVisible = [...messages].reverse().find(m => m.role !== 'system');
-        if (lastVisible) {
-            document.getElementById('list-preview').textContent = lastVisible.text.substring(0, 30) + (lastVisible.text.length > 30 ? '...' : '');
+        if (messages.length > 0) {
+            document.getElementById('list-preview').textContent = messages[messages.length - 1].text.substring(0, 30) + '...';
         }
     }
 
-    async function handleSend(override) {
-        const text = (override || chatInput.value).trim();
+    async function handleSend() {
+        const text = chatInput.value.trim();
         if (!text) return;
 
-        if (!override) {
-            chatInput.value = '';
-            chatInput.style.height = 'auto';
-            updateUIState();
-        }
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
 
-        messages.push({ role: 'user', text });
-        renderMessages();
-        
+        // 1. Save User Message to RTDB
+        const userMsg = { role: 'user', text, timestamp: Date.now() };
+        push(ref(db, 'messages'), userMsg);
+
         document.getElementById('chat-status').textContent = 'typing...';
 
         try {
-            // Build the conversation payload
-            // Always put the System Prompt at the TOP of the array sent to Puter
-            const puterMessages = [
+            // 2. Prepare Context for Puter AI
+            // We strictly include the systemPrompt at the start
+            const context = [
                 { role: 'system', content: systemPrompt },
-                ...messages.slice(-10).map(m => ({
+                ...messages.slice(-8).map(m => ({
                     role: m.role === 'assistant' ? 'assistant' : 'user',
                     content: m.text
-                }))
+                })),
+                { role: 'user', content: text }
             ];
 
-            const response = await puter.ai.chat(puterMessages, { model: 'gpt-4o-mini' });
+            const response = await puter.ai.chat(context, { model: 'gpt-4o-mini' });
             const reply = typeof response === 'string' ? response : response.message.content;
-            
-            messages.push({ role: 'assistant', text: reply });
+
+            // 3. Save Assistant Reply to RTDB
+            push(ref(db, 'messages'), { role: 'assistant', text: reply, timestamp: Date.now() });
             document.getElementById('chat-status').textContent = 'online';
-            renderMessages();
         } catch (err) {
-            console.error('Puter AI Error:', err);
-            messages.push({ role: 'assistant', text: "Error: AI disconnected. Check your connection." });
+            console.error(err);
             document.getElementById('chat-status').textContent = 'online';
-            renderMessages();
-        }
-    }
-
-    function setupSpeech() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return;
-        recognition = new Speech();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.onresult = (e) => {
-            const transcript = e.results[e.results.length - 1][0].transcript;
-            if (transcript) handleSend(transcript.trim());
-        };
-        recognition.onend = () => { if (isListening) recognition.start(); };
-    }
-
-    function toggleMic() {
-        if (!recognition) return;
-        isListening = !isListening;
-        if (isListening) {
-            recognition.start();
-            micIcon.setAttribute('data-lucide', 'mic');
-            micBtn.classList.add('pulse-mic');
-        } else {
-            recognition.stop();
-            micIcon.setAttribute('data-lucide', 'mic-off');
-            micBtn.classList.remove('pulse-mic');
-        }
-        lucide.createIcons({ root: micBtn });
-    }
-
-    function updateUIState() {
-        const hasText = chatInput.value.trim().length > 0;
-        sendBtn.classList.toggle('hidden-el', !hasText);
-        micBtn.classList.toggle('hidden-el', hasText);
-    }
-
-    function toggleModal(show) {
-        if (show) {
-            devModal.classList.remove('hidden-el');
-            setTimeout(() => {
-                devModal.classList.remove('opacity-0');
-                devModal.querySelector('div').classList.remove('scale-95');
-            }, 10);
-        } else {
-            devModal.classList.add('opacity-0');
-            devModal.querySelector('div').classList.add('scale-95');
-            setTimeout(() => devModal.classList.add('hidden-el'), 300);
         }
     }
 
     function setupEvents() {
-        sendBtn.onclick = () => handleSend();
-        micBtn.onclick = toggleMic;
-
-        chatInput.oninput = function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
-            updateUIState();
-        };
-
+        sendBtn.onclick = handleSend;
         chatInput.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
             }
         };
-        
+
+        // Hotkey Y to open settings
         window.onkeydown = (e) => {
             if (e.key.toLowerCase() === 'y' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                toggleModal(devModal.classList.contains('hidden-el'));
+                devModal.classList.remove('hidden-el');
             }
         };
 
-        // SAVE LOGIC
-        document.getElementById('save-btn').onclick = async function() {
-            const btn = this;
-            characterName = document.getElementById('char-name-input').value || 'AI Roleplay';
-            systemPrompt = document.getElementById('sys-prompt-input').value || '';
-            
-            chatTitle.textContent = characterName;
-            listName.textContent = characterName;
+        document.getElementById('settings-trigger').onclick = () => devModal.classList.remove('hidden-el');
+        document.getElementById('close-modal').onclick = () => devModal.classList.add('hidden-el');
 
-            // Visual feedback
-            btn.classList.add('save-success');
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> APPLYING...';
-            lucide.createIcons({root: btn});
-
-            // "Soft reset" history to prioritize new personality
-            // We clear old history and leave a invisible "system" marker
-            messages = [
-                { role: 'assistant', text: `Hey boss what's up.` }
-            ];
-            
-            setTimeout(() => {
-                btn.classList.remove('save-success');
-                btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> APPLY SETTINGS';
-                lucide.createIcons({root: btn});
-                toggleModal(false);
-                renderMessages();
-            }, 600);
+        // Save Config to Firebase
+        document.getElementById('save-btn').onclick = () => {
+            const name = document.getElementById('char-name-input').value;
+            const prompt = document.getElementById('sys-prompt-input').value;
+            set(ref(db, 'config'), { name, prompt });
+            devModal.classList.add('hidden-el');
         };
 
+        // Clear Chat in Firebase
         document.getElementById('clear-btn').onclick = () => {
-            messages = [{ role: 'assistant', text: 'History reset. Say hello!' }];
-            renderMessages();
-            toggleModal(false);
+            remove(ref(db, 'messages'));
+            devModal.classList.add('hidden-el');
         };
-
-        document.getElementById('close-modal').onclick = () => toggleModal(false);
     }
 
     init();
