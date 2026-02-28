@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WeChat Roleplay Studio</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 自定义滚动条样式，使其更接近手机原生体验 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .typing-dot {
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* 隐藏元素的工具类 */
+        .hidden-el { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans selection:bg-green-200">
+
+<div class="min-h-screen flex items-center justify-center">
+    <!-- 手机框架容器 (用于录屏) -->
+    <div class="w-full max-w-[480px] h-[100dvh] sm:h-[850px] bg-[#EDEDED] sm:rounded-3xl sm:shadow-2xl sm:border-[8px] sm:border-gray-900 overflow-hidden flex flex-col relative">
+        
+        <!-- 微信顶部导航栏 -->
+        <div class="bg-[#EDEDED] flex items-center justify-between px-3 pt-12 pb-3 border-b border-gray-300 shrink-0 sticky top-0 z-10">
+            <div class="flex items-center space-x-1 cursor-pointer w-1/4">
+                <i data-lucide="chevron-left" class="text-black w-7 h-7"></i>
+            </div>
+            <div id="header-title" class="text-[17px] font-medium text-black truncate w-1/2 text-center">
+                神秘角色
+            </div>
+            <div class="flex justify-end w-1/4">
+                <i data-lucide="more-horizontal" class="text-black cursor-pointer w-6 h-6"></i>
+            </div>
+        </div>
+
+        <!-- 聊天区域 -->
+        <div id="chat-container" class="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+            <!-- 消息将通过 JS 动态插入到这里 -->
+        </div>
+
+        <!-- 底部输入区域 -->
+        <div class="bg-[#F7F7F7] border-t border-gray-300 px-3 py-3 pb-8 sm:pb-3 shrink-0">
+            <div class="flex items-end space-x-3">
+                <button id="mic-btn" class="p-2 rounded-full transition-colors bg-transparent text-gray-700 hover:bg-gray-200" title="点击开启持续倾听">
+                    <i data-lucide="mic-off" class="w-7 h-7" id="mic-icon"></i>
+                </button>
+                
+                <div class="flex-1 bg-white rounded-md border border-gray-100 min-h-[40px] shadow-sm flex items-center">
+                    <textarea
+                        id="chat-input"
+                        placeholder="发送消息..."
+                        class="w-full max-h-[120px] py-2 px-3 bg-transparent resize-none focus:outline-none text-[16px] leading-tight"
+                        rows="1"
+                        style="height: 40px;"
+                    ></textarea>
+                </div>
+                
+                <div class="flex items-center space-x-2 pb-1">
+                    <i data-lucide="smile" class="text-gray-700 cursor-pointer w-7 h-7"></i>
+                    
+                    <button id="send-btn" class="bg-[#07C160] text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-[#06ad56] transition-colors hidden-el">
+                        发送
+                    </button>
+                    <i data-lucide="plus" id="plus-btn" class="text-gray-700 cursor-pointer w-7 h-7"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 开发者控制台 (Modal) -->
+        <div id="dev-modal" class="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden-el opacity-0 transition-opacity duration-200">
+            <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col transform scale-95 transition-transform duration-200" id="dev-modal-content">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="settings" class="text-[#07C160] w-6 h-6"></i>
+                        <h2 class="text-xl font-bold text-gray-800">开发者控制台</h2>
+                    </div>
+                    <button id="close-modal-btn" class="p-1 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            AI 角色名称 (显示在顶部)
+                        </label>
+                        <input
+                            type="text"
+                            id="character-name-input"
+                            class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07C160]/50 focus:border-[#07C160] transition-colors"
+                            placeholder="例如：马斯克、女朋友、面试官"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            系统提示词 (定义他的性格和角色)
+                        </label>
+                        <textarea
+                            id="system-prompt-input"
+                            class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07C160]/50 focus:border-[#07C160] transition-colors resize-none h-40 text-sm"
+                            placeholder="在这里详细描述AI的身份、说话方式和背景..."
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex gap-3">
+                    <button id="clear-chat-btn" class="flex-1 py-2.5 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors">
+                        清空聊天记录
+                    </button>
+                    <button id="save-modal-btn" class="flex-1 py-2.5 bg-[#07C160] text-white font-medium rounded-lg hover:bg-[#06ad56] transition-colors shadow-sm shadow-green-500/30">
+                        保存并关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 状态与变量 ---
+    const apiKey = ""; // 执行环境会在运行时提供
+    let messages = [
+        { id: '1', role: 'model', text: '你好！我是你的专属AI角色，请按键盘上的 Y 键来设定我的身份吧！' }
+    ];
+    let characterName = '神秘角色';
+    let systemPrompt = '你现在扮演一个傲娇的二次元少女。回复要简短，带有情感，经常使用“哼”、“笨蛋”等词汇。';
+    
+    let isListening = false;
+    let recognition = null;
+    let isTyping = false;
+
+    // --- DOM 元素引用 ---
+    const chatContainer = document.getElementById('chat-container');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const plusBtn = document.getElementById('plus-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const micIcon = document.getElementById('mic-icon');
+    const headerTitle = document.getElementById('header-title');
+    
+    const devModal = document.getElementById('dev-modal');
+    const devModalContent = document.getElementById('dev-modal-content');
+    const charNameInput = document.getElementById('character-name-input');
+    const sysPromptInput = document.getElementById('system-prompt-input');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const saveModalBtn = document.getElementById('save-modal-btn');
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+
+    // --- 初始化 ---
+    function init() {
+        lucide.createIcons(); // 渲染所有 Lucide 图标
+        
+        // 初始数据绑定
+        charNameInput.value = characterName;
+        sysPromptInput.value = systemPrompt;
+        headerTitle.textContent = characterName;
+        
+        renderAllMessages();
+        setupEventListeners();
+        setupSpeechRecognition();
+    }
+
+    // --- 消息渲染与 DOM 操作 ---
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function createMessageHTML(msg) {
+        const isUser = msg.role === 'user';
+        const wrapperClass = `flex items-start ${isUser ? 'justify-end' : 'justify-start'}`;
+        
+        let avatarHTML = '';
+        if (!isUser) {
+            avatarHTML = `
+                <div class="w-10 h-10 rounded-md bg-white border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0 mr-3">
+                    <i data-lucide="user" class="text-gray-400 w-6 h-6"></i>
+                </div>
+            `;
+        } else {
+            avatarHTML = `
+                <div class="w-10 h-10 rounded-md bg-blue-500 shadow-sm flex items-center justify-center overflow-hidden shrink-0 ml-3">
+                   <div class="text-white font-bold text-sm">我</div>
+                </div>
+            `;
+        }
+
+        const bubbleBg = isUser ? 'bg-[#95EC69]' : 'bg-white';
+        const bubbleRadius = isUser ? 'rounded-tr-none' : 'rounded-tl-none border border-gray-100';
+        
+        const tailLeftRight = isUser ? 'right-[-6px]' : 'left-[-6px]';
+        const tailBorder = !isUser ? 'border-l border-t border-gray-100' : '';
+        const tailSkew = isUser ? 'skewY(-45deg)' : 'skewY(45deg)';
+
+        const tailHTML = `
+            <div class="absolute top-0 w-3 h-3 ${bubbleBg} ${tailLeftRight} ${tailBorder}" 
+                 style="clip-path: polygon(0 0, 100% 0, 50% 100%); transform: ${tailSkew}; top: 10px;">
+            </div>
+        `;
+
+        const textHTML = `
+            <div class="relative max-w-[70%] text-[16px] leading-relaxed break-words px-4 py-2.5 rounded-xl text-black ${bubbleBg} ${bubbleRadius}">
+                ${tailHTML}
+                ${msg.text}
+            </div>
+        `;
+
+        return `
+            <div class="${wrapperClass}">
+                ${!isUser ? avatarHTML : ''}
+                ${textHTML}
+                ${isUser ? avatarHTML : ''}
+            </div>
+        `;
+    }
+
+    function renderAllMessages() {
+        chatContainer.innerHTML = '';
+        messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.innerHTML = createMessageHTML(msg);
+            chatContainer.appendChild(div.firstElementChild);
+        });
+        lucide.createIcons({ root: chatContainer }); // 重新渲染新插入的图标
+        scrollToBottom();
+    }
+
+    function appendMessage(msg) {
+        messages.push(msg);
+        const div = document.createElement('div');
+        div.innerHTML = createMessageHTML(msg);
+        chatContainer.appendChild(div.firstElementChild);
+        lucide.createIcons({ root: chatContainer });
+        scrollToBottom();
+    }
+
+    // --- 打字指示器 ---
+    let typingIndicatorEl = null;
+    function showTyping() {
+        if (typingIndicatorEl) return;
+        isTyping = true;
+        
+        typingIndicatorEl = document.createElement('div');
+        typingIndicatorEl.className = 'flex items-start justify-start';
+        typingIndicatorEl.innerHTML = `
+            <div class="w-10 h-10 rounded-md bg-white border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0 mr-3">
+                <i data-lucide="user" class="text-gray-400 w-6 h-6"></i>
+            </div>
+            <div class="max-w-[70%] px-4 py-3 rounded-xl bg-white text-black rounded-tl-none border border-gray-100 flex items-center space-x-1">
+                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+            </div>
+        `;
+        chatContainer.appendChild(typingIndicatorEl);
+        lucide.createIcons({ root: typingIndicatorEl });
+        scrollToBottom();
+    }
+
+    function hideTyping() {
+        if (typingIndicatorEl) {
+            chatContainer.removeChild(typingIndicatorEl);
+            typingIndicatorEl = null;
+        }
+        isTyping = false;
+    }
+
+    // --- API 调用与发送逻辑 ---
+    async function callGeminiAPI(userText) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        // 排除最后一条刚发出去的消息(因为它还没进入历史)
+        const history = messages.slice(0, -1).map(msg => ({
+            role: msg.role === 'model' ? 'model' : 'user',
+            parts: [{ text: msg.text }]
+        }));
+
+        history.push({
+            role: 'user',
+            parts: [{ text: userText }]
+        });
+
+        const payload = {
+            contents: history,
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            }
+        };
+
+        const fetchWithRetry = async (retries = 5, delay = 1000) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                }
+            }
+        };
+
+        try {
+            const result = await fetchWithRetry();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text || "（AI
