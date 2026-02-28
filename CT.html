@@ -191,7 +191,8 @@
 
 <script>
     // Configuration
-    let messages = [{ id: '1', role: 'model', text: "Hey! Puter AI is ready. No API Key required. Press [Y] to edit my character." }];
+    // Fixed: Puter AI expects 'assistant' role, not 'model'
+    let messages = [{ id: '1', role: 'assistant', text: "Hey! Puter AI is ready. No API Key required. Press [Y] to edit my character." }];
     let characterName = 'AI Roleplay';
     let systemPrompt = 'You are a friend chatting on WhatsApp. Use informal language and emojis. Be concise. Reply in English unless addressed in Chinese.';
     
@@ -247,6 +248,7 @@
         const text = (override || chatInput.value).trim();
         if (!text) return;
 
+        // Clear input early to prevent double submission
         if (!override) {
             chatInput.value = '';
             chatInput.style.height = 'auto';
@@ -259,20 +261,23 @@
         document.getElementById('chat-status').textContent = 'typing...';
 
         try {
-            // Using Puter AI Chat directly (Turbo-fast and no manual API Key needed)
+            // Using Puter AI Chat directly
             const response = await puter.ai.chat([
                 { role: 'system', content: systemPrompt },
-                ...messages.slice(-10).map(m => ({ role: m.role, content: m.text }))
+                ...messages.slice(-10).map(m => ({ 
+                    role: m.role === 'assistant' ? 'assistant' : m.role, 
+                    content: m.text 
+                }))
             ], { model: 'gpt-4o-mini' });
 
             const reply = typeof response === 'string' ? response : response.message.content;
             
-            messages.push({ role: 'model', text: reply });
+            messages.push({ role: 'assistant', text: reply });
             document.getElementById('chat-status').textContent = 'online';
             renderMessages();
         } catch (err) {
-            console.error(err);
-            messages.push({ role: 'model', text: "Sorry, I encountered an issue. Please try again." });
+            console.error('Puter AI Error:', err);
+            messages.push({ role: 'assistant', text: "Error: " + (err.message || "Failed to connect to Puter AI.") });
             document.getElementById('chat-status').textContent = 'online';
             renderMessages();
         }
@@ -337,9 +342,10 @@
             updateUIState();
         };
 
+        // Fixed: Ensure Enter sends message and prevents newline
         chatInput.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
+                e.preventDefault(); // Stop newline
                 handleSend();
             }
         };
@@ -359,7 +365,7 @@
         };
 
         document.getElementById('clear-btn').onclick = () => {
-            messages = [{ role: 'model', text: 'History reset. Ready to chat!' }];
+            messages = [{ role: 'assistant', text: 'History reset. Ready to chat!' }];
             renderMessages();
             toggleModal(false);
         };
