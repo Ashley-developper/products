@@ -1,207 +1,203 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp 电脑版模拟器</title>
+    <title>WhatsApp Desktop Simulation - Puter AI Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Integration of Puter.js -->
+    <script src="https://js.puter.com/v2/"></script>
     <style>
-        /* WhatsApp 专用背景纹理色 */
-        .chat-bg {
-            background-color: #efeae2;
+        :root {
+            --wa-bg-main: #f0f2f5;
+            --wa-bg-chat: #efeae2;
+            --wa-sidebar: #111b21;
+            --wa-green: #00a884;
+            --wa-bubble-self: #d9fdd3;
+            --wa-bubble-other: #ffffff;
+            --wa-text-primary: #111b21;
+            --wa-text-secondary: #667781;
+        }
+
+        body { background-color: #0c1317; height: 100vh; width: 100vw; overflow: hidden; margin: 0; }
+
+        /* WhatsApp Doodles Background */
+        .chat-wallpaper {
+            background-color: var(--wa-bg-chat);
             background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
             background-blend-mode: overlay;
-            background-opacity: 0.06;
+            opacity: 0.9;
         }
 
-        /* 隐藏滚动条 */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Message Bubble Tails (High Precision) */
+        .bubble-left::before {
+            content: ""; position: absolute; top: 0; left: -8px;
+            width: 0; height: 0; border-style: solid;
+            border-width: 0 10px 10px 0; border-color: transparent #ffffff transparent transparent;
+        }
+        .bubble-right::after {
+            content: ""; position: absolute; top: 0; right: -8px;
+            width: 0; height: 0; border-style: solid;
+            border-width: 0 0 10px 10px; border-color: transparent transparent transparent #d9fdd3;
+        }
 
-        /* 通用滚动条样式 */
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #ced3d6; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
 
-        /* WhatsApp 气泡样式 */
-        .bubble-left {
-            background-color: #ffffff;
-            border-radius: 0 8px 8px 8px;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-        }
-        .bubble-right {
-            background-color: #d9fdd3;
-            border-radius: 8px 0 8px 8px;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-        }
-
-        /* 状态工具类 */
         .hidden-el { display: none !important; }
+        .pulse-mic { animation: mic-pulse 1.2s infinite; color: #ef4444; }
+        @keyframes mic-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
 
-        /* 持续倾听动画 */
-        .pulse-ring {
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: .5; transform: scale(1.1); }
-        }
+        .transition-all { transition: all 0.2s ease-in-out; }
     </style>
 </head>
-<body class="bg-[#111b21] h-screen w-screen flex items-center justify-center font-sans overflow-hidden p-0 sm:p-5">
+<body class="flex items-center justify-center">
 
-    <!-- WhatsApp 主窗口 -->
-    <div class="w-full h-full max-w-[1600px] bg-[#f0f2f5] shadow-2xl flex overflow-hidden sm:rounded-lg">
+    <div class="w-full h-full flex bg-white overflow-hidden shadow-none">
         
-        <!-- 1. 左侧极窄侧边栏 (Action Bar) -->
-        <div class="w-[64px] bg-[#f0f2f5] border-r border-gray-300 flex flex-col items-center py-4 space-y-6 shrink-0">
-            <div class="w-10 h-10 bg-gray-400 rounded-full mb-2 flex items-center justify-center overflow-hidden">
+        <!-- 1. Left Minimal Navigation -->
+        <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-5 shrink-0">
+            <div class="w-9 h-9 bg-gray-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer">
                  <i data-lucide="user" class="text-white w-6 h-6"></i>
             </div>
-            <i data-lucide="message-square" class="text-[#54656f] w-6 h-6 cursor-pointer hover:bg-gray-200 p-1 rounded-md" title="聊天"></i>
-            <i data-lucide="phone" class="text-[#54656f] w-6 h-6 cursor-pointer hover:bg-gray-200 p-1 rounded-md" title="通话"></i>
-            <i data-lucide="circle-dashed" class="text-[#54656f] w-6 h-6 cursor-pointer hover:bg-gray-200 p-1 rounded-md" title="状态"></i>
+            <div class="flex flex-col space-y-4 w-full items-center">
+                <div class="p-2 bg-[#374248] rounded-full text-white cursor-pointer" title="Chats">
+                    <i data-lucide="message-square" class="w-6 h-6"></i>
+                </div>
+                <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer transition-all">
+                    <i data-lucide="circle-dashed" class="w-6 h-6"></i>
+                </div>
+                <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer transition-all">
+                    <i data-lucide="rss" class="w-6 h-6"></i>
+                </div>
+            </div>
             <div class="flex-1"></div>
-            <i data-lucide="settings" class="text-[#54656f] w-6 h-6 cursor-pointer hover:bg-gray-200 p-1 rounded-md" title="设置"></i>
-        </div>
+            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer transition-all">
+                <i data-lucide="settings" class="w-6 h-6"></i>
+            </div>
+        </nav>
 
-        <!-- 2. 聊天列表 (Sidebar) -->
-        <div class="w-[350px] bg-white border-r border-gray-300 flex flex-col shrink-0">
-            <div class="p-3">
-                <div class="flex items-center justify-between mb-4">
-                    <h1 class="text-xl font-bold text-[#111b21]">聊天</h1>
-                    <div class="flex space-x-3 text-[#54656f]">
+        <!-- 2. Contacts/Chat List -->
+        <aside class="w-[380px] border-r border-[#d1d7db] flex flex-col shrink-0 bg-white">
+            <header class="p-4 flex flex-col space-y-4">
+                <div class="flex justify-between items-center px-1">
+                    <h1 class="text-[22px] font-bold text-[#111b21]">Chats</h1>
+                    <div class="flex space-x-4 text-[#54656f]">
                         <i data-lucide="square-pen" class="w-5 h-5 cursor-pointer"></i>
-                        <i data-lucide="filter" class="w-5 h-5 cursor-pointer"></i>
+                        <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer"></i>
                     </div>
                 </div>
-                <div class="bg-[#f0f2f5] h-9 rounded-lg flex items-center px-3">
-                    <i data-lucide="search" class="w-4 h-4 text-gray-500 mr-3"></i>
-                    <input type="text" placeholder="搜索或开始新聊天" class="bg-transparent text-sm w-full outline-none text-gray-700">
+                <div class="bg-[#f0f2f5] h-9 rounded-lg flex items-center px-3 focus-within:bg-white focus-within:shadow-sm ring-1 ring-transparent focus-within:ring-[#00a884] transition-all">
+                    <i data-lucide="search" class="w-4 h-4 text-[#54656f] mr-4"></i>
+                    <input type="text" placeholder="Search or start new chat" class="bg-transparent text-[14px] w-full outline-none text-[#3b4a54]">
                 </div>
-            </div>
+            </header>
             
-            <div class="flex-1 overflow-y-auto no-scrollbar">
-                <!-- 活动聊天项目 -->
+            <div class="flex-1 overflow-y-auto">
                 <div class="bg-[#f0f2f5] px-4 py-3 flex items-center space-x-3 cursor-pointer">
-                    <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
-                        <i data-lucide="user-round" class="text-gray-400 w-7 h-7"></i>
+                    <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center shrink-0">
+                        <i data-lucide="user-round" class="text-white w-7 h-7"></i>
                     </div>
-                    <div class="flex-1 min-w-0 border-b border-gray-100 pb-2">
-                        <div class="flex justify-between items-baseline">
-                            <span id="list-name" class="text-[16px] text-[#111b21] font-normal truncate">神秘角色</span>
-                            <span class="text-[12px] text-[#00a884] font-medium">下午 11:45</span>
+                    <div class="flex-1 min-w-0 border-b border-transparent">
+                        <div class="flex justify-between items-baseline mb-0.5">
+                            <span id="list-name" class="text-[17px] text-[#111b21] font-medium truncate">AI Roleplay</span>
+                            <span class="text-[12px] text-[#00a884] font-medium">Online</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <p class="text-[13px] text-[#667781] truncate">在线</p>
-                            <div class="bg-[#25d366] text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">1</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- 占位列表 -->
-                <div class="px-4 py-3 flex items-center space-x-3 hover:bg-[#f5f6f6] cursor-pointer opacity-60">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-500 font-bold">W</div>
-                    <div class="flex-1 min-w-0 border-b border-gray-100 pb-2">
-                        <div class="flex justify-between items-baseline">
-                            <span class="text-[16px] text-[#111b21]">工作小组</span>
-                            <span class="text-[12px] text-gray-400">昨天</span>
-                        </div>
-                        <p class="text-[13px] text-gray-400 truncate">收到，谢谢</p>
+                        <p id="list-preview" class="text-[14px] text-[#667781] truncate italic">Puter.js Connected</p>
                     </div>
                 </div>
             </div>
-        </div>
+        </aside>
 
-        <!-- 3. 右侧主聊天区 (Main Chat Area) -->
-        <div class="flex-1 flex flex-col relative">
-            <!-- 顶部栏 -->
-            <div class="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 shrink-0 z-10 border-b border-gray-300">
-                <div class="flex items-center space-x-3 cursor-pointer">
+        <!-- 3. Main Conversation -->
+        <main class="flex-1 flex flex-col relative bg-[#f0f2f5]">
+            <header class="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 shrink-0 z-20 border-b border-[#d1d7db]">
+                <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <i data-lucide="user" class="text-gray-500 w-6 h-6"></i>
+                        <i data-lucide="user" class="text-white w-6 h-6"></i>
                     </div>
                     <div>
-                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">神秘角色</h2>
-                        <p class="text-[12px] text-[#667781]">在线</p>
+                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">AI Roleplay</h2>
+                        <p id="chat-status" class="text-[12px] text-[#667781]">online</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-6 text-[#54656f]">
+                <div class="flex items-center space-x-5 text-[#54656f]">
                     <i data-lucide="video" class="w-5 h-5 cursor-pointer"></i>
                     <i data-lucide="phone" class="w-5 h-5 cursor-pointer"></i>
-                    <div class="h-6 w-[1px] bg-gray-300"></div>
+                    <div class="w-[1px] h-4 bg-[#d1d7db]"></div>
                     <i data-lucide="search" class="w-5 h-5 cursor-pointer"></i>
                     <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer"></i>
                 </div>
+            </header>
+
+            <div id="chat-container" class="flex-1 overflow-y-auto px-12 py-6 space-y-3 chat-wallpaper relative scroll-smooth">
+                <!-- Messages -->
             </div>
 
-            <!-- 消息区域 (带背景图) -->
-            <div id="chat-container" class="flex-1 overflow-y-auto px-10 py-6 space-y-2 chat-bg relative">
-                <!-- 消息内容 -->
-            </div>
-
-            <!-- 底部输入栏 -->
-            <div class="min-h-[62px] bg-[#f0f2f5] flex items-end px-4 py-2.5 space-x-3 shrink-0">
-                <div class="flex items-center space-x-3 mb-1">
-                    <i data-lucide="plus" class="text-[#54656f] w-6 h-6 cursor-pointer hover:text-black"></i>
-                </div>
+            <footer class="min-h-[62px] bg-[#f0f2f5] flex items-end px-4 py-3 space-x-2 shrink-0 z-20">
+                <button class="p-2 text-[#54656f] hover:bg-[#d1d7db] rounded-full mb-1">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
                 
-                <div class="flex-1 bg-white rounded-lg flex items-center px-3 min-h-[40px] shadow-sm">
-                    <textarea id="chat-input" class="w-full bg-transparent max-h-[120px] py-2 outline-none text-[15px] resize-none" placeholder="输入消息" rows="1"></textarea>
+                <div class="flex-1 flex items-center bg-white rounded-xl px-4 min-h-[44px] shadow-sm ring-1 ring-inset ring-transparent focus-within:ring-[#00a884] transition-all">
+                    <button class="mr-3 text-[#54656f]"><i data-lucide="smile" class="w-6 h-6"></i></button>
+                    <textarea id="chat-input" class="w-full bg-transparent max-h-[150px] py-2.5 outline-none text-[15px] resize-none leading-tight" placeholder="Type a message" rows="1"></textarea>
                 </div>
 
                 <div class="flex items-center mb-1">
-                    <button id="mic-btn" class="p-2 transition-all text-[#54656f] hover:scale-110">
+                    <button id="mic-btn" class="p-2 text-[#54656f] hover:bg-[#d1d7db] rounded-full transition-all">
                         <i data-lucide="mic-off" class="w-6 h-6" id="mic-icon"></i>
                     </button>
-                    <button id="send-btn" class="hidden-el text-[#00a884] p-2">
+                    <button id="send-btn" class="hidden-el p-2 text-[#00a884] hover:bg-[#d1d7db] rounded-full transition-all">
                         <i data-lucide="send-horizontal" class="w-6 h-6"></i>
                     </button>
                 </div>
-            </div>
-        </div>
+            </footer>
+        </main>
 
-        <!-- 开发者设置 (Modal) - 按 Y 触发 -->
-        <div id="dev-modal" class="absolute inset-0 z-50 bg-[#111b21]/80 flex items-center justify-center hidden-el opacity-0 transition-all duration-300 backdrop-blur-sm">
-            <div class="bg-white w-[450px] rounded-lg shadow-2xl overflow-hidden transform scale-95 transition-transform">
-                <div class="bg-[#008069] p-4 text-white flex justify-between items-center">
-                    <h2 class="font-medium flex items-center gap-2">
-                        <i data-lucide="settings-2" class="w-5 h-5"></i> 角色性格配置
-                    </h2>
-                    <i data-lucide="x" id="close-modal" class="cursor-pointer hover:rotate-90 transition-transform"></i>
+        <!-- Personality Panel (Y Key) -->
+        <div id="dev-modal" class="absolute inset-0 z-50 bg-[#0c1317]/85 flex items-center justify-center hidden-el opacity-0 transition-all duration-300 backdrop-blur-md">
+            <div class="bg-white w-[500px] rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform">
+                <div class="bg-[#008069] p-5 text-white flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="terminal" class="w-6 h-6"></i>
+                        <h2 class="text-lg font-semibold uppercase tracking-widest">AI Config</h2>
+                    </div>
+                    <button id="close-modal" class="hover:bg-white/20 p-1 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
                 </div>
-                <div class="p-6 space-y-5">
+                <div class="p-8 space-y-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">角色昵称</label>
-                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 p-2 focus:border-[#00a884] outline-none transition-colors">
+                        <label class="block text-xs font-bold text-[#008069] mb-2">DISPLAY NAME</label>
+                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 py-2 focus:border-[#00a884] outline-none transition-colors text-lg">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">核心指令 (System Prompt)</label>
-                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-3 rounded text-sm h-40 resize-none focus:ring-2 focus:ring-[#00a884] outline-none"></textarea>
+                        <label class="block text-xs font-bold text-[#008069] mb-2">SYSTEM INSTRUCTION</label>
+                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm h-48 resize-none focus:ring-2 focus:ring-[#00a884] outline-none leading-relaxed"></textarea>
                     </div>
-                    <div class="flex gap-3 pt-4">
-                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-2.5 rounded shadow-md hover:bg-[#008069] active:scale-95 transition-all uppercase text-sm font-bold tracking-wider">保存配置</button>
-                        <button id="clear-btn" class="px-4 py-2.5 text-red-500 hover:bg-red-50 rounded text-sm font-medium transition-colors">清空聊天</button>
+                    <div class="flex gap-4 pt-4">
+                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-4 rounded-xl shadow-lg hover:bg-[#008069] font-bold transition-all">SAVE & UPDATE</button>
+                        <button id="clear-btn" class="px-6 py-4 text-red-500 hover:bg-red-50 rounded-xl font-semibold transition-colors">RESET</button>
                     </div>
                 </div>
-                <div class="bg-gray-50 p-3 text-center">
-                    <p class="text-[11px] text-gray-400 font-mono">按 [ Y ] 键开关此控制台</p>
+                <div class="bg-gray-100 p-4 text-center">
+                    <p class="text-[11px] text-gray-500 font-medium">PRESS <span class="bg-gray-200 px-1 py-0.5 rounded border border-gray-300 text-black">[ Y ]</span> TO TOGGLE</p>
                 </div>
             </div>
         </div>
     </div>
 
 <script>
-    // --- 核心配置 ---
-    const apiKey = ""; 
-    let messages = [{ id: '1', role: 'model', text: '嘿！我是你的 WhatsApp AI 伙伴。按下键盘上的 [Y] 键来定制我的角色性格！' }];
-    let characterName = '神秘角色';
-    let systemPrompt = '你现在是一个在WhatsApp上交流的朋友。说话风格随意、自然，偶尔使用表情符号。你的回复应该简短有力。始终使用中文回复。';
+    // Configuration
+    let messages = [{ id: '1', role: 'model', text: "Hey! Puter AI is ready. No API Key required. Press [Y] to edit my character." }];
+    let characterName = 'AI Roleplay';
+    let systemPrompt = 'You are a friend chatting on WhatsApp. Use informal language and emojis. Be concise. Reply in English unless addressed in Chinese.';
     
     let isListening = false;
     let recognition = null;
 
-    // DOM 元素引用
     const chatContainer = document.getElementById('chat-container');
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
@@ -210,32 +206,28 @@
     const chatTitle = document.getElementById('chat-title');
     const listName = document.getElementById('list-name');
     const devModal = document.getElementById('dev-modal');
-    const charNameInput = document.getElementById('char-name-input');
-    const sysPromptInput = document.getElementById('sys-prompt-input');
 
-    // --- 初始化 ---
     function init() {
         lucide.createIcons();
-        charNameInput.value = characterName;
-        sysPromptInput.value = systemPrompt;
+        document.getElementById('char-name-input').value = characterName;
+        document.getElementById('sys-prompt-input').value = systemPrompt;
         renderMessages();
         setupSpeech();
         setupEvents();
     }
 
-    // --- 消息渲染 ---
     function renderMessages() {
         chatContainer.innerHTML = '';
         messages.forEach(msg => {
             const isUser = msg.role === 'user';
             const div = document.createElement('div');
-            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-1`;
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-3`;
             
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
             div.innerHTML = `
-                <div class="relative px-3 py-1.5 max-w-[85%] sm:max-w-[65%] shadow-sm ${isUser ? 'bubble-right' : 'bubble-left text-[#111b21]'}">
-                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-10">${msg.text}</div>
+                <div class="relative px-3 py-1.5 max-w-[85%] sm:max-w-[65%] shadow-sm ${isUser ? 'bubble-right bg-[#d9fdd3]' : 'bubble-left bg-white text-[#111b21]'}">
+                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12 leading-relaxed">${msg.text}</div>
                     <div class="absolute bottom-1 right-2 flex items-center space-x-1">
                         <span class="text-[10px] text-[#667781]">${time}</span>
                         ${isUser ? '<i data-lucide="check-check" class="w-3.5 h-3.5 text-[#53bdeb]"></i>' : ''}
@@ -246,9 +238,11 @@
         });
         lucide.createIcons({ root: chatContainer });
         chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        const lastMsg = messages[messages.length - 1];
+        document.getElementById('list-preview').textContent = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
     }
 
-    // --- 发送逻辑 ---
     async function handleSend(override) {
         const text = (override || chatInput.value).trim();
         if (!text) return;
@@ -259,71 +253,43 @@
             updateUIState();
         }
 
-        messages.push({ id: Date.now().toString(), role: 'user', text });
+        messages.push({ role: 'user', text });
         renderMessages();
         
-        // 调用 AI (带重试逻辑)
-        const reply = await callAIWithRetry(text);
-        messages.push({ id: Date.now().toString(), role: 'model', text: reply });
-        renderMessages();
-    }
+        document.getElementById('chat-status').textContent = 'typing...';
 
-    // 指数退避重试逻辑
-    async function callAIWithRetry(text, retries = 5, delay = 1000) {
-        for (let i = 0; i < retries; i++) {
-            try {
-                const response = await callAI(text);
-                if (response) return response;
-            } catch (err) {
-                if (i === retries - 1) throw err;
-                await new Promise(res => setTimeout(res, delay));
-                delay *= 2; // 指数退避
-            }
+        try {
+            // Using Puter AI Chat directly (Turbo-fast and no manual API Key needed)
+            const response = await puter.ai.chat([
+                { role: 'system', content: systemPrompt },
+                ...messages.slice(-10).map(m => ({ role: m.role, content: m.text }))
+            ], { model: 'gpt-4o-mini' });
+
+            const reply = typeof response === 'string' ? response : response.message.content;
+            
+            messages.push({ role: 'model', text: reply });
+            document.getElementById('chat-status').textContent = 'online';
+            renderMessages();
+        } catch (err) {
+            console.error(err);
+            messages.push({ role: 'model', text: "Sorry, I encountered an issue. Please try again." });
+            document.getElementById('chat-status').textContent = 'online';
+            renderMessages();
         }
-        return "抱歉，由于连接问题，我暂时无法回复。请稍后再试。";
     }
 
-    async function callAI(text) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const history = messages.slice(-12).map(m => ({ role: m.role, parts: [{ text: m.text }] }));
-        
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: history,
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            })
-        });
-
-        if (!res.ok) throw new Error('API Error');
-
-        const data = await res.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "我不太明白你的意思。";
-    }
-
-    // --- 语音倾听 ---
+    // Speech functionality
     function setupSpeech() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!Speech) return;
-        
         recognition = new Speech();
         recognition.continuous = true;
         recognition.interimResults = false;
-        recognition.lang = 'zh-CN';
-        
         recognition.onresult = (e) => {
             const transcript = e.results[e.results.length - 1][0].transcript;
-            if (transcript && transcript.trim()) {
-                handleSend(transcript.trim());
-            }
+            if (transcript) handleSend(transcript.trim());
         };
-
-        recognition.onend = () => {
-            if (isListening) {
-                try { recognition.start(); } catch(err) {}
-            }
-        };
+        recognition.onend = () => { if (isListening) recognition.start(); };
     }
 
     function toggleMic() {
@@ -332,16 +298,15 @@
         if (isListening) {
             recognition.start();
             micIcon.setAttribute('data-lucide', 'mic');
-            micBtn.classList.add('text-[#25d366]', 'pulse-ring');
+            micBtn.classList.add('pulse-mic');
         } else {
             recognition.stop();
             micIcon.setAttribute('data-lucide', 'mic-off');
-            micBtn.classList.remove('text-[#25d366]', 'pulse-ring');
+            micBtn.classList.remove('pulse-mic');
         }
         lucide.createIcons({ root: micBtn });
     }
 
-    // --- UI 辅助 ---
     function updateUIState() {
         const hasText = chatInput.value.trim().length > 0;
         sendBtn.classList.toggle('hidden-el', !hasText);
@@ -368,7 +333,7 @@
 
         chatInput.oninput = function() {
             this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
             updateUIState();
         };
 
@@ -386,15 +351,15 @@
         };
 
         document.getElementById('save-btn').onclick = () => {
-            characterName = charNameInput.value || '神秘角色';
-            systemPrompt = sysPromptInput.value || '';
+            characterName = document.getElementById('char-name-input').value || 'AI Roleplay';
+            systemPrompt = document.getElementById('sys-prompt-input').value || '';
             chatTitle.textContent = characterName;
             listName.textContent = characterName;
             toggleModal(false);
         };
 
         document.getElementById('clear-btn').onclick = () => {
-            messages = [];
+            messages = [{ role: 'model', text: 'History reset. Ready to chat!' }];
             renderMessages();
             toggleModal(false);
         };
