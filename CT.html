@@ -1,115 +1,186 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp RTDB Edition</title>
+    <title>WhatsApp AI RTDB Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://js.puter.com/v2/"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        
         :root {
-            --wa-bg-chat: #efeae2;
-            --wa-bubble-self: #d9fdd3;
+            --wa-bg-deep: #0c1317;
+            --wa-panel-bg: #111b21;
+            --wa-sidebar-bg: #202c33;
+            --wa-chat-bg: #0b141a;
+            --wa-header-bg: #202c33;
+            --wa-input-bg: #2a3942;
+            --wa-bubble-self: #005c4b;
+            --wa-bubble-other: #202c33;
+            --wa-text-primary: #e9edef;
+            --wa-text-secondary: #8696a0;
+            --wa-accent: #00a884;
         }
-        body { background-color: #0c1317; height: 100vh; width: 100vw; overflow: hidden; margin: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--wa-bg-deep);
+            color: var(--wa-text-primary);
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+        }
+
         .chat-wallpaper {
-            background-color: var(--wa-bg-chat);
+            background-color: var(--wa-chat-bg);
             background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
             background-blend-mode: overlay;
+            opacity: 0.06;
+            position: absolute;
+            inset: 0;
+            z-index: 0;
         }
+
         .bubble-left::before {
             content: ""; position: absolute; top: 0; left: -8px;
             width: 0; height: 0; border-style: solid;
-            border-width: 0 10px 10px 0; border-color: transparent #ffffff transparent transparent;
+            border-width: 0 10px 10px 0; border-color: transparent var(--wa-bubble-other) transparent transparent;
         }
+
         .bubble-right::after {
             content: ""; position: absolute; top: 0; right: -8px;
             width: 0; height: 0; border-style: solid;
-            border-width: 0 0 10px 10px; border-color: transparent transparent transparent #d9fdd3;
+            border-width: 0 0 10px 10px; border-color: transparent transparent transparent var(--wa-bubble-self);
         }
-        .hidden-el { display: none !important; }
+
+        /* 伸缩条样式 */
+        #resizer {
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.2s;
+        }
+        #resizer:hover { background: var(--wa-accent); }
+
+        .active-chat { background-color: #2a3942 !important; }
+
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        
+        .hide-scroll::-webkit-scrollbar { display: none; }
+
+        .typing-dot {
+            width: 4px; height: 4px; background: var(--wa-text-secondary);
+            border-radius: 50%; animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
     </style>
 </head>
 <body class="flex items-center justify-center">
 
-    <div class="w-full h-full flex bg-white overflow-hidden shadow-none">
-        <!-- 1. Left Nav -->
-        <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-5 shrink-0">
-            <div class="w-9 h-9 bg-gray-500 rounded-full flex items-center justify-center overflow-hidden"><i data-lucide="user" class="text-white w-6 h-6"></i></div>
-            <div class="p-2 bg-[#374248] rounded-full text-white cursor-pointer"><i data-lucide="message-square" class="w-6 h-6"></i></div>
+    <div class="w-full h-full flex overflow-hidden">
+        <!-- 1. 左侧功能窄栏 -->
+        <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-4 shrink-0 border-r border-white/5">
+            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer transition-all"><i data-lucide="message-circle" class="w-6 h-6"></i></div>
+            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer transition-all"><i data-lucide="phone" class="w-6 h-6"></i></div>
+            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer transition-all"><i data-lucide="circle-dashed" class="w-6 h-6"></i></div>
             <div class="flex-1"></div>
-            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-full cursor-pointer" id="settings-trigger"><i data-lucide="settings" class="w-6 h-6"></i></div>
+            <div class="p-2 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer" id="settings-trigger"><i data-lucide="settings" class="w-6 h-6"></i></div>
+            <div class="w-8 h-8 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-full border border-white/20"></div>
         </nav>
 
-        <!-- 2. Sidebar -->
-        <aside class="w-[380px] border-r border-[#d1d7db] flex flex-col shrink-0 bg-white">
+        <!-- 2. 侧边栏 (好友列表) -->
+        <aside id="sidebar" class="w-[350px] min-w-[280px] max-w-[500px] flex flex-col shrink-0 bg-[#111b21] border-r border-white/10">
             <header class="p-4 flex flex-col space-y-4">
-                <h1 class="text-[22px] font-bold text-[#111b21]">WhatsAPP</h1>
-                <div class="bg-[#f0f2f5] h-9 rounded-lg flex items-center px-3">
-                    <i data-lucide="search" class="w-4 h-4 text-[#54656f] mr-4"></i>
-                    <input type="text" placeholder="Search..." class="bg-transparent text-[14px] w-full outline-none">
-                </div>
-            </header>
-            <div class="flex-1 overflow-y-auto">
-                <div class="bg-[#f0f2f5] px-4 py-3 flex items-center space-x-3 cursor-pointer">
-                    <div class="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center shrink-0"><i data-lucide="bot" class="text-white w-7 h-7"></i></div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-baseline">
-                            <span id="list-name" class="text-[17px] font-medium text-[#111b21]">AI Companion</span>
-                            <span class="text-[12px] text-[#00a884]">Online</span>
-                        </div>
-                        <p id="list-preview" class="text-[14px] text-[#667781] truncate">Waiting for messages...</p>
+                <div class="flex justify-between items-center">
+                    <h1 class="text-xl font-bold text-white">OpenClaw</h1>
+                    <div class="flex space-x-3 text-[#aebac1]">
+                        <i data-lucide="square-pen" class="w-5 h-5 cursor-pointer"></i>
+                        <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer"></i>
                     </div>
                 </div>
+                <div class="bg-[#202c33] h-9 rounded-lg flex items-center px-3 group focus-within:bg-[#2a3942] transition-all">
+                    <i data-lucide="search" class="w-4 h-4 text-[#8696a0] mr-4 group-focus-within:text-emerald-500"></i>
+                    <input type="text" placeholder="搜索或开始新聊天" class="bg-transparent text-[14px] w-full outline-none text-white placeholder-[#8696a0]">
+                </div>
+                <div class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                    <span class="px-3 py-1 bg-[#202c33] text-[#8696a0] text-xs rounded-full cursor-pointer hover:bg-[#2a3942]">全部</span>
+                    <span class="px-3 py-1 bg-[#202c33] text-[#8696a0] text-xs rounded-full cursor-pointer hover:bg-[#2a3942]">未读</span>
+                    <span class="px-3 py-1 bg-[#202c33] text-[#8696a0] text-xs rounded-full cursor-pointer hover:bg-[#2a3942]">收藏</span>
+                </div>
+            </header>
+
+            <!-- 好友列表容器 -->
+            <div id="contact-list" class="flex-1 overflow-y-auto">
+                <!-- 动态生成 -->
             </div>
         </aside>
 
-        <!-- 3. Main Chat -->
-        <main class="flex-1 flex flex-col relative bg-[#f0f2f5]">
-            <header class="h-[60px] bg-[#f0f2f5] flex items-center justify-between px-4 border-b border-[#d1d7db]">
+        <!-- 伸缩柄 -->
+        <div id="resizer"></div>
+
+        <!-- 3. 主聊天区 -->
+        <main class="flex-1 flex flex-col relative bg-[#0b141a]">
+            <!-- 背景纹理层 -->
+            <div class="chat-wallpaper"></div>
+
+            <header class="h-[60px] bg-[#202c33] flex items-center justify-between px-4 z-10 border-b border-black/20">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center"><i data-lucide="bot" class="text-white w-6 h-6"></i></div>
-                    <div>
-                        <h2 id="chat-title" class="text-[16px] font-medium text-[#111b21]">AI Companion</h2>
-                        <p id="chat-status" class="text-[12px] text-[#667781]">online</p>
+                    <div id="chat-avatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-inner">AI</div>
+                    <div class="cursor-pointer">
+                        <h2 id="chat-title" class="text-[16px] font-medium text-[#e9edef]">加载中...</h2>
+                        <p id="chat-status" class="text-[12px] text-[#8696a0]">在线</p>
                     </div>
+                </div>
+                <div class="flex items-center space-x-5 text-[#aebac1]">
+                    <i data-lucide="video" class="w-5 h-5 cursor-pointer hover:text-white"></i>
+                    <i data-lucide="search" class="w-5 h-5 cursor-pointer hover:text-white"></i>
+                    <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer hover:text-white"></i>
                 </div>
             </header>
 
-            <div id="chat-container" class="flex-1 overflow-y-auto px-12 py-6 space-y-3 chat-wallpaper relative"></div>
+            <!-- 消息列表 -->
+            <div id="chat-container" class="flex-1 overflow-y-auto px-12 py-6 space-y-2 relative z-10">
+                <!-- 消息在这里渲染 -->
+            </div>
 
-            <footer class="min-h-[62px] bg-[#f0f2f5] flex items-end px-4 py-3 space-x-2">
-                <div class="flex-1 flex items-center bg-white rounded-xl px-4 min-h-[44px] shadow-sm">
-                    <textarea id="chat-input" class="w-full bg-transparent max-h-[150px] py-2.5 outline-none text-[15px] resize-none" placeholder="Type a message" rows="1"></textarea>
+            <!-- 输入框底部 -->
+            <footer class="min-h-[62px] bg-[#202c33] flex items-center px-4 py-2 space-x-3 z-10">
+                <div class="flex space-x-3 text-[#aebac1]">
+                    <i data-lucide="plus" class="w-6 h-6 cursor-pointer"></i>
                 </div>
-                <button id="send-btn" class="p-2 text-[#00a884] hover:bg-[#d1d7db] rounded-full transition-all">
+                <div class="flex-1 flex items-center bg-[#2a3942] rounded-lg px-4 min-h-[42px]">
+                    <textarea id="chat-input" class="w-full bg-transparent max-h-[120px] py-2 outline-none text-[15px] text-white resize-none placeholder-[#8696a0]" placeholder="输入消息" rows="1"></textarea>
+                </div>
+                <button id="send-btn" class="p-2 text-[#8696a0] hover:text-emerald-500 transition-all">
                     <i data-lucide="send-horizontal" class="w-6 h-6"></i>
                 </button>
             </footer>
         </main>
 
-        <!-- Config Modal -->
-        <div id="dev-modal" class="absolute inset-0 z-50 bg-[#0c1317]/85 flex items-center justify-center hidden-el">
-            <div class="bg-white w-[500px] rounded-2xl shadow-2xl overflow-hidden">
-                <div class="bg-[#008069] p-5 text-white flex justify-between items-center">
-                    <h2 class="text-lg font-semibold uppercase tracking-widest">Character Memory Settings</h2>
-                    <button id="close-modal"><i data-lucide="x" class="w-6 h-6"></i></button>
+        <!-- 设置面板 (侧滑式/模态) -->
+        <div id="dev-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden">
+            <div class="bg-[#202c33] w-[450px] rounded-2xl shadow-2xl overflow-hidden border border-white/10">
+                <div class="p-5 flex justify-between items-center border-b border-white/10">
+                    <h2 class="text-emerald-500 font-bold tracking-wider">AI 人格配置</h2>
+                    <button id="close-modal" class="text-[#8696a0] hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
                 </div>
-                <div class="p-8 space-y-6">
+                <div class="p-6 space-y-5">
                     <div>
-                        <label class="block text-xs font-bold text-[#008069] mb-2">CHARACTER NAME</label>
-                        <input id="char-name-input" type="text" class="w-full border-b-2 border-gray-200 py-2 outline-none focus:border-[#00a884]">
+                        <label class="block text-[11px] text-[#00a884] font-bold mb-1">当前角色名称</label>
+                        <input id="char-name-input" type="text" class="w-full bg-[#2a3942] border-none rounded-lg py-3 px-4 outline-none text-white focus:ring-1 focus:ring-emerald-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-[#008069] mb-2">SYSTEM PERSONALITY (MEMORY)</label>
-                        <textarea id="sys-prompt-input" class="w-full bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm h-48 resize-none outline-none focus:ring-2 focus:ring-[#00a884]"></textarea>
+                        <label class="block text-[11px] text-[#00a884] font-bold mb-1">系统指令 (AI 记忆)</label>
+                        <textarea id="sys-prompt-input" class="w-full bg-[#2a3942] border-none rounded-lg p-4 text-sm h-40 resize-none outline-none text-white focus:ring-1 focus:ring-emerald-500"></textarea>
                     </div>
-                    <div class="flex gap-4">
-                        <button id="save-btn" class="flex-1 bg-[#00a884] text-white py-4 rounded-xl shadow-lg hover:bg-[#008069] font-bold">SAVE TO CLOUD</button>
-                        <button id="clear-btn" class="px-6 py-4 text-red-500 hover:bg-red-50 rounded-xl font-semibold">RESET HISTORY</button>
+                    <div class="flex gap-3">
+                        <button id="save-btn" class="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-500 transition-all">保存更改</button>
+                        <button id="clear-btn" class="px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-lg transition-all border border-red-400/20">清空记录</button>
                     </div>
                 </div>
             </div>
@@ -117,10 +188,10 @@
     </div>
 
 <script type="module">
-    // --- 1. Firebase RTDB Integration ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+    // --- Firebase 配置 ---
     const firebaseConfig = {
         apiKey: "AIzaSyAhd2QZhg_k0J5-A7BKgiM6oc5N2PwYz64",
         authDomain: "ashley-6f99c.firebaseapp.com",
@@ -134,165 +205,244 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // --- 2. State & Elements ---
-    let messages = [];
-    let characterName = "AI Companion";
-    let systemPrompt = "You are a friendly person on WhatsApp. Be concise and use emojis.";
+    // --- 预设 AI 角色 ---
+    const AI_CHATS = [
+        { id: 'ai_concise', name: "极简助手", prompt: "你是极简主义者。回答永远不超过10个字。多用表情符。", model: "gpt-4o-mini", color: "#00a884", lastMsg: "有什么可以帮您？" },
+        { id: 'ai_scientist', name: "技术极客", prompt: "你是一个喜欢冷笑话的科学家。用严谨但幽默的口吻说话。", model: "gpt-4o-mini", color: "#3b82f6", lastMsg: "熵在增加，伙计。" },
+        { id: 'ai_companion', name: "贴心闺蜜", prompt: "你是一个热情、有同理心的闺蜜，喜欢八卦和鼓励别人。", model: "gpt-4o-mini", color: "#ec4899", lastMsg: "今天过得怎么样呀？" },
+        { id: 'ai_philosopher', name: "苏格拉底", prompt: "你是一名哲学家。不要直接回答问题，而是通过反问引导对方思考。", model: "claude-3-haiku", color: "#f59e0b", lastMsg: "何为真实？" }
+    ];
 
-    const chatContainer = document.getElementById('chat-container');
-    const chatInput = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('send-btn');
-    const chatTitle = document.getElementById('chat-title');
-    const listName = document.getElementById('list-name');
-    const devModal = document.getElementById('dev-modal');
+    // --- 状态变量 ---
+    let currentChatId = AI_CHATS[0].id;
+    let chatHistory = {}; // 存储本地各个角色的消息
+    let currentConfigs = {}; // 存储各个角色的自定义配置
 
-    // --- 3. Initial Load from Firebase ---
+    const elements = {
+        chatContainer: document.getElementById('chat-container'),
+        chatInput: document.getElementById('chat-input'),
+        sendBtn: document.getElementById('send-btn'),
+        chatTitle: document.getElementById('chat-title'),
+        chatAvatar: document.getElementById('chat-avatar'),
+        chatStatus: document.getElementById('chat-status'),
+        contactList: document.getElementById('contact-list'),
+        sidebar: document.getElementById('sidebar'),
+        resizer: document.getElementById('resizer'),
+        devModal: document.getElementById('dev-modal'),
+        charInput: document.getElementById('char-name-input'),
+        promptInput: document.getElementById('sys-prompt-input'),
+        saveBtn: document.getElementById('save-btn'),
+        clearBtn: document.getElementById('clear-btn')
+    };
+
     function init() {
         lucide.createIcons();
-        
-        // Listen for Character Config
-        onValue(ref(db, 'config'), (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                characterName = data.name || characterName;
-                systemPrompt = data.prompt || systemPrompt;
-                chatTitle.textContent = characterName;
-                listName.textContent = characterName;
-                document.getElementById('char-name-input').value = characterName;
-                document.getElementById('sys-prompt-input').value = systemPrompt;
-            }
-        });
-
-        // Listen for Messages
-        onValue(ref(db, 'messages'), (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                messages = Object.entries(data).map(([id, val]) => ({ id, ...val }));
-                messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            } else {
-                messages = [];
-            }
-            renderMessages();
-        });
-
-        setupEvents();
+        setupResizer();
+        renderContactList();
+        switchChat(currentChatId);
+        setupEventListeners();
     }
 
-    function renderMessages() {
-        chatContainer.innerHTML = '';
-        messages.forEach(msg => {
+    // --- 侧边栏伸缩逻辑 ---
+    function setupResizer() {
+        let isResizing = false;
+        elements.resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newWidth = e.clientX - 64; // 减去左侧窄栏宽度
+            if (newWidth > 280 && newWidth < 500) {
+                elements.sidebar.style.width = `${newWidth}px`;
+            }
+        });
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.body.style.cursor = 'default';
+        });
+    }
+
+    // --- 渲染联系人 ---
+    function renderContactList() {
+        elements.contactList.innerHTML = '';
+        AI_CHATS.forEach(chat => {
+            const item = document.createElement('div');
+            item.className = `flex items-center px-4 py-3 cursor-pointer hover:bg-[#202c33] border-b border-white/5 transition-all ${chat.id === currentChatId ? 'active-chat' : ''}`;
+            item.id = `contact-${chat.id}`;
+            item.onclick = () => switchChat(chat.id);
+            
+            item.innerHTML = `
+                <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-white font-bold" style="background-color: ${chat.color}">
+                    ${chat.name[0]}
+                </div>
+                <div class="ml-3 flex-1 min-w-0 border-b border-white/5 pb-2">
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-[16px] text-white font-medium">${chat.name}</span>
+                        <span class="text-[11px] text-[#8696a0]">12:00</span>
+                    </div>
+                    <p class="text-[14px] text-[#8696a0] truncate" id="preview-${chat.id}">${chat.lastMsg}</p>
+                </div>
+            `;
+            elements.contactList.appendChild(item);
+        });
+    }
+
+    // --- 切换聊天 ---
+    function switchChat(chatId) {
+        currentChatId = chatId;
+        const chat = AI_CHATS.find(c => c.id === chatId);
+        
+        // UI 更新
+        elements.chatTitle.textContent = chat.name;
+        elements.chatAvatar.textContent = chat.name[0];
+        elements.chatAvatar.style.backgroundColor = chat.color;
+        
+        // 高亮联系人
+        document.querySelectorAll('#contact-list > div').forEach(el => el.classList.remove('active-chat'));
+        document.getElementById(`contact-${chatId}`).classList.add('active-chat');
+
+        // 加载当前聊天的配置和消息
+        syncFromFirebase(chatId);
+    }
+
+    // --- Firebase 同步逻辑 ---
+    let unsubConfig, unsubMsgs;
+    function syncFromFirebase(chatId) {
+        if (unsubConfig) unsubConfig();
+        if (unsubMsgs) unsubMsgs();
+
+        // 1. 同步配置
+        unsubConfig = onValue(ref(db, `configs/${chatId}`), (snap) => {
+            const config = snap.val() || { name: AI_CHATS.find(c => c.id === chatId).name, prompt: AI_CHATS.find(c => c.id === chatId).prompt };
+            currentConfigs[chatId] = config;
+            elements.chatTitle.textContent = config.name;
+        });
+
+        // 2. 同步消息
+        unsubMsgs = onValue(ref(db, `messages/${chatId}`), (snap) => {
+            const data = snap.val();
+            const msgs = data ? Object.values(data).sort((a,b) => a.timestamp - b.timestamp) : [];
+            chatHistory[chatId] = msgs;
+            renderMessages(msgs);
+            
+            if(msgs.length > 0) {
+                const last = msgs[msgs.length - 1].text;
+                document.getElementById(`preview-${chatId}`).textContent = last.substring(0, 25) + (last.length > 25 ? '...' : '');
+            }
+        });
+    }
+
+    function renderMessages(msgs) {
+        elements.chatContainer.innerHTML = '';
+        msgs.forEach(msg => {
             const isUser = msg.role === 'user';
             const div = document.createElement('div');
-            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-3`;
-            const time = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-1`;
+            const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
             div.innerHTML = `
-                <div class="relative px-3 py-1.5 max-w-[85%] shadow-sm ${isUser ? 'bubble-right bg-[#d9fdd3]' : 'bubble-left bg-white text-[#111b21]'}">
-                    <div class="text-[14.5px] whitespace-pre-wrap pb-1 pr-12">${msg.text || ''}</div>
-                    <div class="absolute bottom-1 right-2 flex items-center space-x-1">
-                        <span class="text-[10px] text-[#667781]">${time}</span>
+                <div class="relative px-2.5 py-1.5 max-w-[85%] shadow-md rounded-lg ${isUser ? 'bubble-right bg-[#005c4b]' : 'bubble-left bg-[#202c33]'}">
+                    <div class="text-[14.5px] text-[#e9edef] whitespace-pre-wrap pr-12">${msg.text}</div>
+                    <div class="absolute bottom-1 right-1.5 flex items-center space-x-1">
+                        <span class="text-[10px] text-[#8696a0]">${time}</span>
                         ${isUser ? '<i data-lucide="check-check" class="w-3.5 h-3.5 text-[#53bdeb]"></i>' : ''}
                     </div>
                 </div>
             `;
-            chatContainer.appendChild(div);
+            elements.chatContainer.appendChild(div);
         });
-        lucide.createIcons({ root: chatContainer });
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        
-        if (messages.length > 0) {
-            const lastMsg = messages[messages.length - 1].text || '';
-            document.getElementById('list-preview').textContent = lastMsg.substring(0, 30) + (lastMsg.length > 30 ? '...' : '');
-        }
+        lucide.createIcons({ root: elements.chatContainer });
+        elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
     }
 
+    // --- 发送消息 ---
     async function handleSend() {
-        const text = chatInput.value.trim();
+        const text = elements.chatInput.value.trim();
         if (!text) return;
 
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
+        elements.chatInput.value = '';
+        elements.chatInput.style.height = 'auto';
 
-        // 1. Save User Message to RTDB
-        const userMsg = { role: 'user', text: text, timestamp: Date.now() };
-        try {
-            push(ref(db, 'messages'), userMsg);
-        } catch (e) {
-            console.error("Firebase push error:", e);
-        }
+        const timestamp = Date.now();
+        push(ref(db, `messages/${currentChatId}`), { role: 'user', text, timestamp });
 
-        document.getElementById('chat-status').textContent = 'typing...';
+        showTyping(true);
 
         try {
-            // 2. Prepare Context for Puter AI
-            // 核心修复：确保 systemPrompt 永远是第一条，并且是最新的
+            const config = currentConfigs[currentChatId] || AI_CHATS.find(c => c.id === currentChatId);
             const context = [
-                { role: 'system', content: systemPrompt },
-                ...messages.slice(-15).map(m => ({
+                { role: 'system', content: config.prompt },
+                ...(chatHistory[currentChatId] || []).slice(-10).map(m => ({
                     role: m.role === 'assistant' ? 'assistant' : 'user',
-                    content: m.text || ''
+                    content: m.text
                 })),
                 { role: 'user', content: text }
             ];
 
             const response = await puter.ai.chat(context, { model: 'gpt-4o-mini' });
-            
-            let reply = "";
-            if (typeof response === 'string') {
-                reply = response;
-            } else if (response && response.message && response.message.content) {
-                reply = response.message.content;
-            }
+            let reply = typeof response === 'string' ? response : (response.message?.content || "...");
 
-            if (!reply) throw new Error("Empty response");
-
-            // 3. Save Assistant Reply to RTDB
-            push(ref(db, 'messages'), { role: 'assistant', text: reply, timestamp: Date.now() });
-            document.getElementById('chat-status').textContent = 'online';
+            push(ref(db, `messages/${currentChatId}`), { role: 'assistant', text: reply, timestamp: Date.now() });
         } catch (err) {
-            console.error("AI Error:", err);
-            document.getElementById('chat-status').textContent = 'online';
+            console.error(err);
+        } finally {
+            showTyping(false);
         }
     }
 
-    function setupEvents() {
-        sendBtn.onclick = handleSend;
-        chatInput.onkeydown = (e) => {
+    function showTyping(show) {
+        if (show) {
+            elements.chatStatus.innerHTML = `
+                <div class="flex items-center space-x-1">
+                    <span>输入中</span>
+                    <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+                </div>
+            `;
+        } else {
+            elements.chatStatus.textContent = '在线';
+        }
+    }
+
+    // --- 事件绑定 ---
+    function setupEventListeners() {
+        elements.sendBtn.onclick = handleSend;
+        elements.chatInput.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
             }
         };
 
-        // Hotkey Y to open settings
-        window.onkeydown = (e) => {
-            if (e.key.toLowerCase() === 'y' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                devModal.classList.remove('hidden-el');
+        // 设置面板触发
+        elements.settingsTrigger.onclick = () => {
+            const config = currentConfigs[currentChatId];
+            elements.charInput.value = config.name;
+            elements.promptInput.value = config.prompt;
+            elements.devModal.classList.remove('hidden');
+        };
+
+        elements.closeModal.onclick = () => elements.devModal.classList.add('hidden');
+
+        elements.saveBtn.onclick = () => {
+            const name = elements.charInput.value;
+            const prompt = elements.promptInput.value;
+            update(ref(db, `configs/${currentChatId}`), { name, prompt });
+            elements.devModal.classList.add('hidden');
+        };
+
+        elements.clearBtn.onclick = () => {
+            if (confirm("确定要清空与该 AI 的聊天记录吗？")) {
+                remove(ref(db, `messages/${currentChatId}`));
+                elements.devModal.classList.add('hidden');
             }
         };
 
-        document.getElementById('settings-trigger').onclick = () => devModal.classList.remove('hidden-el');
-        document.getElementById('close-modal').onclick = () => devModal.classList.add('hidden-el');
-
-        // Save Config to Firebase
-        document.getElementById('save-btn').onclick = () => {
-            const name = document.getElementById('char-name-input').value;
-            const prompt = document.getElementById('sys-prompt-input').value;
-            set(ref(db, 'config'), { name, prompt }).then(() => {
-                // 更新本地变量以确保下次 handleSend 立即生效
-                characterName = name;
-                systemPrompt = prompt;
-                devModal.classList.add('hidden-el');
-            });
-        };
-
-        // Clear Chat in Firebase
-        document.getElementById('clear-btn').onclick = () => {
-            if(confirm("Are you sure you want to clear chat history?")) {
-                remove(ref(db, 'messages'));
-                devModal.classList.add('hidden-el');
-            }
-        };
+        // 自动展开输入框
+        elements.chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
     }
 
     init();
