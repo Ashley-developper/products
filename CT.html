@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenClaw AI - WhatsApp Edition</title>
+    <title>OpenClaw AI - Memory Enhanced</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://js.puter.com/v2/"></script>
@@ -139,7 +139,7 @@
         <div class="progress-container">
             <div id="splash-bar" class="progress-bar"></div>
         </div>
-        <p class="text-white/30 text-[10px] uppercase tracking-[0.3em] mt-8">Powered by AI Hub</p>
+        <p class="text-white/30 text-[10px] uppercase tracking-[0.3em] mt-8">Powered by AI Memory Engine</p>
     </div>
 
     <!-- 1. Primary Sidebar (Navigation) -->
@@ -219,7 +219,7 @@
                 <div id="chat-avatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg transition-transform duration-300">?</div>
                 <div>
                     <h2 id="chat-title" class="text-[16px] font-semibold text-white leading-tight">Select a Model</h2>
-                    <div id="chat-status-area" class="text-[12px] text-emerald-500/80">Ready</div>
+                    <div id="chat-status-area" class="text-[12px] text-emerald-500/80">Syncing Memory...</div>
                 </div>
             </div>
             <div class="flex items-center space-x-6 text-[#aebac1]">
@@ -240,7 +240,7 @@
                     <p class="text-sm text-[#8696a0] leading-relaxed">
                         Welcome to OpenClaw Pro.<br>
                         Choose a model from the left to begin.<br>
-                        Your privacy is secured with hardware-level encryption.
+                        Conversation history is synced automatically.
                     </p>
                 </div>
             </div>
@@ -266,20 +266,20 @@
     <div id="dev-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center hidden p-4">
         <div class="bg-[#202c33] w-full max-w-[480px] rounded-[32px] shadow-2xl overflow-hidden border border-white/10 modal-enter p-8 space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-bold text-white">Model Settings</h2>
+                <h2 class="text-2xl font-bold text-white">AI Memory Tuning</h2>
                 <button id="close-modal" class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-[#8696a0] hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="space-y-6">
                 <div class="group">
-                    <label class="block text-[10px] text-emerald-500 font-bold uppercase mb-2 tracking-[0.2em] group-focus-within:text-white transition-all">Model Display Name</label>
+                    <label class="block text-[10px] text-emerald-500 font-bold uppercase mb-2 tracking-[0.2em] group-focus-within:text-white transition-all">Model Persona Name</label>
                     <input id="char-name-input" type="text" class="w-full bg-[#2a3942] border border-white/5 rounded-2xl py-4 px-5 outline-none text-white focus:border-emerald-500 transition-all">
                 </div>
                 <div>
-                    <label class="block text-[10px] text-emerald-500 font-bold uppercase mb-2 tracking-[0.2em]">System Prompt (Core Logic)</label>
+                    <label class="block text-[10px] text-emerald-500 font-bold uppercase mb-2 tracking-[0.2em]">Long-Term Memory Logic (System Prompt)</label>
                     <textarea id="sys-prompt-input" class="w-full bg-[#2a3942] border border-white/5 rounded-2xl p-5 text-[14px] h-48 resize-none outline-none text-white focus:border-emerald-500 transition-all leading-relaxed"></textarea>
                 </div>
                 <div class="flex gap-4 pt-4">
-                    <button id="save-btn" class="flex-1 bg-white text-black py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg">Sync to Cloud</button>
+                    <button id="save-btn" class="flex-1 bg-white text-black py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg">Commit to Memory</button>
                     <button id="clear-btn" class="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-6 h-6"></i></button>
                 </div>
             </div>
@@ -288,9 +288,9 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, remove, update, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // Firebase
+    // Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyAhd2QZhg_k0J5-A7BKgiM6oc5N2PwYz64",
         authDomain: "ashley-6f99c.firebaseapp.com",
@@ -305,14 +305,14 @@
     const db = getDatabase(app);
 
     const MODELS = [
-        { id: 'm_gpt4mini', name: "GPT-4o Mini", desc: "Fast & balanced efficiency", prompt: "You are a professional AI assistant. Keep responses concise.", cost: "$0.15/1M", color: "#10a37f" },
-        { id: 'm_haiku', name: "Claude 3 Haiku", desc: "Anthropic's lightning model", prompt: "You are an elegant and helpful assistant.", cost: "$0.25/1M", color: "#d97757" },
-        { id: 'm_llama3', name: "Llama 3 8B", desc: "Meta's flagship open source", prompt: "You are an enthusiastic and direct AI.", cost: "$0.05/1M", color: "#0668e1" },
-        { id: 'm_gemini', name: "Gemini 1.5 Flash", desc: "Google's multimodal speed", prompt: "You are a versatile assistant with great multimodal understanding.", cost: "$0.10/1M", color: "#4285f4" }
+        { id: 'm_gpt4mini', name: "GPT-4o Mini", desc: "Fast & balanced efficiency", prompt: "You are a professional AI assistant. You remember everything we discuss.", cost: "$0.15/1M", color: "#10a37f" },
+        { id: 'm_haiku', name: "Claude 3 Haiku", desc: "Anthropic's lightning model", prompt: "You are an elegant assistant with perfect recall.", cost: "$0.25/1M", color: "#d97757" },
+        { id: 'm_llama3', name: "Llama 3 8B", desc: "Meta's flagship open source", prompt: "You are an enthusiastic AI that values context.", cost: "$0.05/1M", color: "#0668e1" },
+        { id: 'm_gemini', name: "Gemini 1.5 Flash", desc: "Google's multimodal speed", prompt: "You are a versatile assistant focusing on context retention.", cost: "$0.10/1M", color: "#4285f4" }
     ];
 
     let currentChatId = null;
-    let chatHistory = {};
+    let chatHistory = {}; // Local memory cache
     let currentConfigs = {};
 
     const elements = {
@@ -340,7 +340,6 @@
         setupEventListeners();
     }
 
-    // Apple Boot Sequence
     function startSplashScreen() {
         let progress = 0;
         const interval = setInterval(() => {
@@ -416,19 +415,36 @@
         syncFirebase(chatId);
     }
 
+    // MEMORY ENHANCED SYNC
     function syncFirebase(chatId) {
+        // 1. Sync Model Persona/Config
         onValue(ref(db, `configs/${chatId}`), (snap) => {
-            const config = snap.val() || { name: MODELS.find(x=>x.id===chatId).name, prompt: MODELS.find(x=>x.id===chatId).prompt };
+            const config = snap.val() || { 
+                name: MODELS.find(x=>x.id===chatId).name, 
+                prompt: MODELS.find(x=>x.id===chatId).prompt 
+            };
             currentConfigs[chatId] = config;
-            if(chatId === currentChatId) elements.chatTitle.textContent = config.name;
+            if(chatId === currentChatId) {
+                elements.chatTitle.textContent = config.name;
+            }
         });
 
-        onValue(ref(db, `messages/${chatId}`), (snap) => {
+        // 2. Sync Message History (Last 50 messages for deep context)
+        const chatQuery = query(ref(db, `messages/${chatId}`), limitToLast(50));
+        onValue(chatQuery, (snap) => {
             const data = snap.val();
             const msgs = data ? Object.values(data).sort((a,b) => a.timestamp - b.timestamp) : [];
-            chatHistory[chatId] = msgs;
-            if (chatId === currentChatId) renderMessages(msgs);
-            if(msgs.length > 0) document.getElementById(`last-${chatId}`).textContent = msgs[msgs.length - 1].text.substring(0, 30);
+            chatHistory[chatId] = msgs; // Update local memory cache
+            
+            if (chatId === currentChatId) {
+                renderMessages(msgs);
+                elements.chatStatus.textContent = 'Online';
+            }
+            
+            if(msgs.length > 0) {
+                const lastMsg = msgs[msgs.length - 1];
+                document.getElementById(`last-${chatId}`).textContent = (lastMsg.role === 'user' ? 'You: ' : '') + lastMsg.text.substring(0, 30);
+            }
         });
     }
 
@@ -457,21 +473,47 @@
     async function sendMessage() {
         const text = elements.chatInput.value.trim();
         if (!text || !currentChatId) return;
+        
         elements.chatInput.value = '';
         elements.chatInput.style.height = 'auto';
-        push(ref(db, `messages/${currentChatId}`), { role: 'user', text, timestamp: Date.now() });
+
+        // 1. Save to Firebase (Triggering real-time sync)
+        const userMsgRef = push(ref(db, `messages/${currentChatId}`));
+        set(userMsgRef, { role: 'user', text, timestamp: Date.now() });
 
         setTyping(true);
+        
         try {
             const config = currentConfigs[currentChatId];
-            const context = [
+            
+            // 2. CONSTRUCT ENHANCED MEMORY CONTEXT
+            // We take the system prompt + last 15 messages for high-quality reasoning
+            const memoryContext = [
                 { role: 'system', content: config.prompt },
-                ...(chatHistory[currentChatId] || []).slice(-8).map(m => ({ role: m.role, content: m.text })),
+                ...(chatHistory[currentChatId] || []).slice(-15).map(m => ({ 
+                    role: m.role, 
+                    content: m.text 
+                })),
                 { role: 'user', content: text }
             ];
-            const response = await puter.ai.chat(context, { model: 'gpt-4o-mini' });
-            push(ref(db, `messages/${currentChatId}`), { role: 'assistant', text: typeof response === 'string' ? response : response.message.content, timestamp: Date.now() });
-        } catch (e) { console.error(e); }
+
+            // 3. AI Inference
+            const response = await puter.ai.chat(memoryContext, { model: 'gpt-4o-mini' });
+            const assistantText = typeof response === 'string' ? response : response.message.content;
+
+            // 4. Save AI Response to Firebase
+            const assistantMsgRef = push(ref(db, `messages/${currentChatId}`));
+            set(assistantMsgRef, { 
+                role: 'assistant', 
+                text: assistantText, 
+                timestamp: Date.now() 
+            });
+
+        } catch (e) { 
+            console.error("AI Memory Error:", e); 
+            // Optional: Show error in chat
+        }
+        
         setTyping(false);
     }
 
@@ -487,20 +529,41 @@
 
     function setupEventListeners() {
         elements.sendBtn.onclick = sendMessage;
-        elements.chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+        elements.chatInput.onkeydown = (e) => { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                sendMessage(); 
+            } 
+        };
+
         document.getElementById('settings-trigger').onclick = () => {
             if(!currentChatId) return;
             document.getElementById('char-name-input').value = currentConfigs[currentChatId].name;
             document.getElementById('sys-prompt-input').value = currentConfigs[currentChatId].prompt;
             elements.devModal.classList.remove('hidden');
         };
+
         document.getElementById('close-modal').onclick = () => elements.devModal.classList.add('hidden');
+        
         document.getElementById('save-btn').onclick = () => {
-            update(ref(db, `configs/${currentChatId}`), { name: document.getElementById('char-name-input').value, prompt: document.getElementById('sys-prompt-input').value });
+            update(ref(db, `configs/${currentChatId}`), { 
+                name: document.getElementById('char-name-input').value, 
+                prompt: document.getElementById('sys-prompt-input').value 
+            });
             elements.devModal.classList.add('hidden');
         };
-        document.getElementById('clear-btn').onclick = () => { if(confirm("Clear history?")) { remove(ref(db, `messages/${currentChatId}`)); elements.devModal.classList.add('hidden'); } };
-        elements.chatInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; };
+
+        document.getElementById('clear-btn').onclick = () => { 
+            if(confirm("Wipe this AI's memory and history?")) { 
+                remove(ref(db, `messages/${currentChatId}`)); 
+                elements.devModal.classList.add('hidden'); 
+            } 
+        };
+
+        elements.chatInput.oninput = function() { 
+            this.style.height = 'auto'; 
+            this.style.height = this.scrollHeight + 'px'; 
+        };
     }
 
     init();
