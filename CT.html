@@ -76,6 +76,16 @@
             50% { opacity: 1; transform: scale(1.02); }
         }
 
+        /* Call Avatar Pulse */
+        @keyframes avatarPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 163, 127, 0.4); }
+            70% { box-shadow: 0 0 0 30px rgba(16, 163, 127, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 163, 127, 0); }
+        }
+        .speaking-pulse {
+            animation: avatarPulse 1.5s infinite;
+        }
+
         /* Glassmorphism */
         .glass-panel {
             backdrop-filter: blur(20px);
@@ -133,7 +143,6 @@
 </head>
 <body class="flex">
 
-    <!-- Splash Screen -->
     <div id="splash-screen">
         <h1 class="brand-text">OpenClaw</h1>
         <div class="progress-container">
@@ -142,7 +151,6 @@
         <p class="text-white/30 text-[10px] uppercase tracking-[0.3em] mt-8">Powered by AI Memory Engine</p>
     </div>
 
-    <!-- 1. Primary Sidebar (Navigation) -->
     <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-4 shrink-0 border-r border-white/5 z-50">
         <div onclick="switchView('chats')" id="nav-chats" class="active-nav-item p-3 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer transition-all relative">
             <i data-lucide="message-square" class="w-6 h-6"></i>
@@ -164,7 +172,6 @@
         <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-700 rounded-full border border-white/20 flex items-center justify-center font-bold text-xs shadow-lg shadow-emerald-900/20">AI</div>
     </nav>
 
-    <!-- 2. Secondary Sidebar (Contact List) -->
     <aside id="sidebar" class="w-[350px] min-w-[280px] max-w-[550px] flex flex-col shrink-0 bg-[#111b21] border-r border-white/10 relative overflow-hidden glass-panel">
         
         <div id="view-chats" class="flex flex-col h-full">
@@ -182,8 +189,7 @@
                 </div>
             </header>
             <div id="contact-list" class="flex-1 overflow-y-auto">
-                <!-- Dynamic Content -->
-            </div>
+                </div>
         </div>
 
         <div id="view-status" class="hidden flex flex-col h-full p-4">
@@ -204,13 +210,12 @@
         <div id="view-calls" class="hidden flex flex-col h-full p-8 text-center space-y-4">
             <i data-lucide="phone" class="w-16 h-16 text-emerald-500 mx-auto opacity-50"></i>
             <h2 class="text-xl font-bold text-white">No Recent Calls</h2>
-            <p class="text-sm text-[#8696a0]">Conversations are text-based streams.</p>
+            <p class="text-sm text-[#8696a0]">Start a voice call from a chat to see history.</p>
         </div>
     </aside>
 
     <div id="resizer"></div>
 
-    <!-- 3. Chat Main View -->
     <main class="flex-1 flex flex-col relative bg-[#0b141a]">
         <div class="chat-wallpaper"></div>
 
@@ -228,7 +233,7 @@
                     API ONLINE
                 </div>
                 <i data-lucide="video" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
-                <i data-lucide="phone" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
+                <i id="start-call-trigger" data-lucide="phone" class="w-5 h-5 cursor-pointer hover:text-emerald-500 transition-colors hidden"></i>
                 <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
             </div>
         </header>
@@ -262,7 +267,32 @@
         </footer>
     </main>
 
-    <!-- Config Modal -->
+    <div id="call-modal" class="fixed inset-0 z-[200] bg-[#0b141a]/95 backdrop-blur-xl flex flex-col items-center justify-center hidden">
+        <div class="flex flex-col items-center mb-12">
+            <div id="call-modal-avatar" class="w-32 h-32 rounded-full flex items-center justify-center text-white text-5xl font-bold shadow-xl mb-8 border-4 border-emerald-500/30 transition-all duration-300">
+                ?
+            </div>
+            <h2 id="call-modal-name" class="text-3xl font-bold text-white tracking-tight mb-2">Model Name</h2>
+            <p id="call-modal-status" class="text-emerald-400 font-mono text-sm tracking-widest uppercase">Connecting...</p>
+        </div>
+
+        <div class="w-[90%] max-w-2xl h-32 flex items-center justify-center text-center">
+            <p id="call-transcript" class="text-xl text-[#8696a0] italic leading-relaxed"></p>
+        </div>
+
+        <div class="absolute bottom-16 flex items-center space-x-8">
+            <button id="call-mic-btn" class="w-14 h-14 bg-[#2a3942] rounded-full flex items-center justify-center hover:bg-[#374248] text-white transition-all shadow-lg">
+                <i data-lucide="mic" class="w-6 h-6"></i>
+            </button>
+            <button id="end-call-btn" class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/30">
+                <i data-lucide="phone-off" class="w-8 h-8"></i>
+            </button>
+            <button class="w-14 h-14 bg-[#2a3942] rounded-full flex items-center justify-center hover:bg-[#374248] text-white transition-all shadow-lg">
+                <i data-lucide="volume-2" class="w-6 h-6"></i>
+            </button>
+        </div>
+    </div>
+
     <div id="dev-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center hidden p-4">
         <div class="bg-[#202c33] w-full max-w-[480px] rounded-[32px] shadow-2xl overflow-hidden border border-white/10 modal-enter p-8 space-y-6">
             <div class="flex justify-between items-center">
@@ -315,6 +345,11 @@
     let chatHistory = {}; // Local memory cache
     let currentConfigs = {};
 
+    // Voice Call Variables
+    let isCalling = false;
+    let speechRecognition = null;
+    let speechSynth = window.speechSynthesis;
+
     const elements = {
         chatContainer: document.getElementById('chat-container'),
         chatInput: document.getElementById('chat-input'),
@@ -329,7 +364,16 @@
         chatFooter: document.getElementById('chat-footer'),
         welcome: document.getElementById('welcome-screen'),
         splash: document.getElementById('splash-screen'),
-        splashBar: document.getElementById('splash-bar')
+        splashBar: document.getElementById('splash-bar'),
+        
+        // Call Elements
+        startCallBtn: document.getElementById('start-call-trigger'),
+        callModal: document.getElementById('call-modal'),
+        endCallBtn: document.getElementById('end-call-btn'),
+        callAvatar: document.getElementById('call-modal-avatar'),
+        callName: document.getElementById('call-modal-name'),
+        callStatus: document.getElementById('call-modal-status'),
+        callTranscript: document.getElementById('call-transcript')
     };
 
     function init() {
@@ -338,6 +382,7 @@
         setupResizer();
         renderModels();
         setupEventListeners();
+        initSpeechAPI();
     }
 
     function startSplashScreen() {
@@ -403,6 +448,7 @@
         currentChatId = chatId;
         elements.welcome.classList.add('hidden');
         elements.chatFooter.classList.remove('hidden');
+        elements.startCallBtn.classList.remove('hidden'); // Show phone icon
 
         const m = MODELS.find(x => x.id === chatId);
         elements.chatTitle.textContent = m.name;
@@ -417,7 +463,6 @@
 
     // MEMORY ENHANCED SYNC
     function syncFirebase(chatId) {
-        // 1. Sync Model Persona/Config
         onValue(ref(db, `configs/${chatId}`), (snap) => {
             const config = snap.val() || { 
                 name: MODELS.find(x=>x.id===chatId).name, 
@@ -429,14 +474,13 @@
             }
         });
 
-        // 2. Sync Message History (Last 50 messages for deep context)
         const chatQuery = query(ref(db, `messages/${chatId}`), limitToLast(50));
         onValue(chatQuery, (snap) => {
             const data = snap.val();
             const msgs = data ? Object.values(data).sort((a,b) => a.timestamp - b.timestamp) : [];
-            chatHistory[chatId] = msgs; // Update local memory cache
+            chatHistory[chatId] = msgs; 
             
-            if (chatId === currentChatId) {
+            if (chatId === currentChatId && !isCalling) {
                 renderMessages(msgs);
                 elements.chatStatus.textContent = 'Online';
             }
@@ -470,26 +514,25 @@
         elements.chatContainer.scrollTo({ top: elements.chatContainer.scrollHeight, behavior: 'smooth' });
     }
 
-    async function sendMessage() {
-        const text = elements.chatInput.value.trim();
+    async function sendMessage(textOverride = null) {
+        const text = textOverride || elements.chatInput.value.trim();
         if (!text || !currentChatId) return;
         
-        elements.chatInput.value = '';
-        elements.chatInput.style.height = 'auto';
+        if (!textOverride) {
+            elements.chatInput.value = '';
+            elements.chatInput.style.height = 'auto';
+        }
 
-        // 1. Save to Firebase (Triggering real-time sync)
         const userMsgRef = push(ref(db, `messages/${currentChatId}`));
         set(userMsgRef, { role: 'user', text, timestamp: Date.now() });
 
-        setTyping(true);
+        if(!isCalling) setTyping(true);
         
         try {
             const config = currentConfigs[currentChatId];
             
-            // 2. CONSTRUCT ENHANCED MEMORY CONTEXT
-            // We take the system prompt + last 15 messages for high-quality reasoning
             const memoryContext = [
-                { role: 'system', content: config.prompt },
+                { role: 'system', content: config.prompt + (isCalling ? " Keep responses very short and conversational suitable for voice chat." : "") },
                 ...(chatHistory[currentChatId] || []).slice(-15).map(m => ({ 
                     role: m.role, 
                     content: m.text 
@@ -497,11 +540,9 @@
                 { role: 'user', content: text }
             ];
 
-            // 3. AI Inference
             const response = await puter.ai.chat(memoryContext, { model: 'gpt-4o-mini' });
             const assistantText = typeof response === 'string' ? response : response.message.content;
 
-            // 4. Save AI Response to Firebase
             const assistantMsgRef = push(ref(db, `messages/${currentChatId}`));
             set(assistantMsgRef, { 
                 role: 'assistant', 
@@ -509,12 +550,15 @@
                 timestamp: Date.now() 
             });
 
+            if (isCalling) {
+                speakText(assistantText);
+            }
+
         } catch (e) { 
             console.error("AI Memory Error:", e); 
-            // Optional: Show error in chat
         }
         
-        setTyping(false);
+        if(!isCalling) setTyping(false);
     }
 
     function setTyping(status) {
@@ -527,14 +571,111 @@
         }
     }
 
+    // --- VOICE CALL LOGIC ---
+    function initSpeechAPI() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            speechRecognition = new SpeechRecognition();
+            speechRecognition.continuous = false;
+            speechRecognition.interimResults = true;
+            speechRecognition.lang = navigator.language || 'en-US';
+
+            speechRecognition.onstart = () => {
+                if(isCalling) elements.callStatus.textContent = "LISTENING...";
+            };
+
+            speechRecognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    else interimTranscript += event.results[i][0].transcript;
+                }
+
+                elements.callTranscript.textContent = finalTranscript || interimTranscript;
+
+                if (finalTranscript && isCalling) {
+                    speechRecognition.stop();
+                    elements.callStatus.textContent = "THINKING...";
+                    sendMessage(finalTranscript); // Process voice text
+                }
+            };
+
+            speechRecognition.onend = () => {
+                // If it ended naturally without finishing logic, and we are still calling, restart listening
+                if (isCalling && elements.callStatus.textContent === "LISTENING...") {
+                    speechRecognition.start();
+                }
+            };
+
+            speechRecognition.onerror = (e) => console.log("Speech Error", e);
+        } else {
+            console.warn("Speech Recognition API not supported in this browser.");
+        }
+    }
+
+    function startVoiceCall() {
+        if (!currentChatId || !speechRecognition) return;
+        isCalling = true;
+        
+        const m = MODELS.find(x => x.id === currentChatId);
+        elements.callName.textContent = m.name;
+        elements.callAvatar.textContent = m.name[0];
+        elements.callAvatar.style.background = `linear-gradient(135deg, ${m.color}, black)`;
+        
+        elements.callModal.classList.remove('hidden');
+        elements.callTranscript.textContent = "Say something to start...";
+        
+        setTimeout(() => speechRecognition.start(), 500);
+    }
+
+    function endVoiceCall() {
+        isCalling = false;
+        elements.callModal.classList.add('hidden');
+        elements.callAvatar.classList.remove('speaking-pulse');
+        
+        if (speechRecognition) speechRecognition.stop();
+        if (speechSynth.speaking) speechSynth.cancel();
+        
+        // Re-render chat messages to show the conversation had during the call
+        renderMessages(chatHistory[currentChatId] || []);
+    }
+
+    function speakText(text) {
+        if (!isCalling) return;
+        
+        elements.callTranscript.textContent = text;
+        elements.callStatus.textContent = "SPEAKING...";
+        elements.callAvatar.classList.add('speaking-pulse');
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = navigator.language || 'en-US';
+        
+        utterance.onend = () => {
+            elements.callAvatar.classList.remove('speaking-pulse');
+            if (isCalling) {
+                elements.callTranscript.textContent = "";
+                speechRecognition.start(); // Go back to listening
+            }
+        };
+
+        speechSynth.speak(utterance);
+    }
+
+    // --- EVENT LISTENERS ---
     function setupEventListeners() {
-        elements.sendBtn.onclick = sendMessage;
+        elements.sendBtn.onclick = () => sendMessage(null);
         elements.chatInput.onkeydown = (e) => { 
             if (e.key === 'Enter' && !e.shiftKey) { 
                 e.preventDefault(); 
-                sendMessage(); 
+                sendMessage(null); 
             } 
         };
+
+        // Voice Call Events
+        elements.startCallBtn.onclick = startVoiceCall;
+        elements.endCallBtn.onclick = endVoiceCall;
 
         document.getElementById('settings-trigger').onclick = () => {
             if(!currentChatId) return;
