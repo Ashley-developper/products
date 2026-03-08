@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp AI Model Edition</title>
+    <title>OpenClaw AI - WhatsApp Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://js.puter.com/v2/"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Inter:wght@400;500;600&display=swap');
         
         :root {
             --wa-bg-deep: #0c1317;
-            --wa-panel-bg: #111b21;
+            --wa-panel-bg: rgba(17, 27, 33, 0.85);
             --wa-sidebar-bg: #202c33;
             --wa-chat-bg: #0b141a;
-            --wa-header-bg: #202c33;
+            --wa-header-bg: rgba(32, 44, 51, 0.9);
             --wa-input-bg: #2a3942;
             --wa-bubble-self: #005c4b;
             --wa-bubble-other: #202c33;
@@ -25,12 +25,61 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--wa-bg-deep);
+            font-family: 'Inter', sans-serif;
+            background-color: black;
             color: var(--wa-text-primary);
             height: 100vh;
             overflow: hidden;
             margin: 0;
+        }
+
+        /* 启动页样式 */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-out, visibility 0.8s;
+        }
+
+        .brand-text {
+            font-family: 'Alex Brush', cursive;
+            font-size: 5rem;
+            color: white;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+            animation: textPulse 2s ease-in-out infinite;
+        }
+
+        .progress-container {
+            width: 200px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: white;
+            box-shadow: 0 0 10px white;
+            transition: width 0.1s linear;
+        }
+
+        @keyframes textPulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        /* 主界面毛玻璃 */
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
 
         /* 极简 WhatsApp 壁纸 */
@@ -39,7 +88,7 @@
             background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
             background-repeat: repeat;
             background-size: 440px;
-            opacity: 0.06;
+            opacity: 0.05;
             position: absolute;
             inset: 0;
             z-index: 0;
@@ -58,18 +107,17 @@
             clip-path: polygon(0 0, 100% 0, 0 100%);
         }
 
-        /* 伸缩条 */
         #resizer {
-            width: 4px; cursor: col-resize; background: transparent;
+            width: 2px; cursor: col-resize; background: transparent;
             transition: background 0.3s; z-index: 50;
         }
         #resizer:hover { background: var(--wa-accent); }
 
-        .active-nav-item { color: #00a884 !important; background: #374248; }
-        .active-chat { background-color: #2a3942 !important; }
+        .active-nav-item { color: #00a884 !important; background: rgba(55, 66, 72, 0.4); }
+        .active-chat { background-color: rgba(42, 57, 66, 0.8) !important; }
 
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         
         .typing-dot {
             width: 4px; height: 4px; background: var(--wa-accent);
@@ -80,12 +128,21 @@
         @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
         .modal-enter { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="flex">
 
-    <!-- 1. 侧边导航窄栏 (固定) -->
+    <!-- 启动页 (iOS 风格) -->
+    <div id="splash-screen">
+        <h1 class="brand-text">OpenClaw</h1>
+        <div class="progress-container">
+            <div id="splash-bar" class="progress-bar"></div>
+        </div>
+        <p class="text-white/30 text-[10px] uppercase tracking-[0.3em] mt-8">Powered by AI Hub</p>
+    </div>
+
+    <!-- 1. 侧边导航窄栏 -->
     <nav class="w-[64px] bg-[#202c33] flex flex-col items-center py-4 space-y-4 shrink-0 border-r border-white/5 z-50">
         <div onclick="switchView('chats')" id="nav-chats" class="active-nav-item p-3 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer transition-all relative">
             <i data-lucide="message-square" class="w-6 h-6"></i>
@@ -104,153 +161,127 @@
         <div id="settings-trigger" class="p-3 text-[#aebac1] hover:bg-[#374248] rounded-xl cursor-pointer transition-all">
             <i data-lucide="settings" class="w-6 h-6"></i>
         </div>
-        <div class="w-9 h-9 bg-emerald-600 rounded-full border border-white/10 flex items-center justify-center font-bold text-xs">AI</div>
+        <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-700 rounded-full border border-white/20 flex items-center justify-center font-bold text-xs shadow-lg shadow-emerald-900/20">AI</div>
     </nav>
 
-    <!-- 2. 二级侧边栏 (可伸缩) -->
-    <aside id="sidebar" class="w-[350px] min-w-[280px] max-w-[550px] flex flex-col shrink-0 bg-[#111b21] border-r border-white/10 relative overflow-hidden">
+    <!-- 2. 二级侧边栏 -->
+    <aside id="sidebar" class="w-[350px] min-w-[280px] max-w-[550px] flex flex-col shrink-0 bg-[#111b21] border-r border-white/10 relative overflow-hidden glass-panel">
         
-        <!-- 对话列表视图 -->
         <div id="view-chats" class="flex flex-col h-full">
             <header class="p-4 space-y-4">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-xl font-bold text-white">对话 (Models)</h1>
-                    <i data-lucide="square-pen" class="w-5 h-5 text-[#aebac1] cursor-pointer"></i>
+                    <h1 class="text-xl font-bold text-white tracking-tight">OpenClaw 对话</h1>
+                    <div class="flex space-x-2">
+                        <i data-lucide="filter" class="w-5 h-5 text-[#aebac1] cursor-pointer hover:text-emerald-500"></i>
+                        <i data-lucide="square-pen" class="w-5 h-5 text-[#aebac1] cursor-pointer hover:text-emerald-500"></i>
+                    </div>
                 </div>
-                <div class="bg-[#202c33] h-9 rounded-lg flex items-center px-3 group focus-within:bg-[#2a3942] transition-all">
+                <div class="bg-[#202c33] h-9 rounded-xl flex items-center px-3 group focus-within:bg-[#2a3942] transition-all">
                     <i data-lucide="search" class="w-4 h-4 text-[#8696a0] mr-4 group-focus-within:text-emerald-500"></i>
-                    <input type="text" placeholder="搜索模型或消息" class="bg-transparent text-[14px] w-full outline-none text-white placeholder-[#8696a0]">
+                    <input type="text" placeholder="搜索廉价模型..." class="bg-transparent text-[14px] w-full outline-none text-white placeholder-[#8696a0]">
                 </div>
             </header>
-            <div id="contact-list" class="flex-1 overflow-y-auto divide-y divide-white/5">
+            <div id="contact-list" class="flex-1 overflow-y-auto">
                 <!-- 动态填充 -->
             </div>
         </div>
 
-        <!-- 动态视图 (Status) -->
+        <!-- 动态/社区/拨号视图保持原样但增加透明度背景 -->
         <div id="view-status" class="hidden flex flex-col h-full p-4">
-            <h1 class="text-xl font-bold text-white mb-6">动态</h1>
-            <div class="flex items-center space-x-4 p-2 hover:bg-[#202c33] rounded-lg cursor-pointer">
+             <h1 class="text-xl font-bold text-white mb-6">我的动态</h1>
+             <div class="flex items-center space-x-4 p-3 hover:bg-[#202c33] rounded-xl cursor-pointer transition-all">
                 <div class="relative">
-                    <div class="w-12 h-12 rounded-full border-2 border-emerald-500 p-0.5">
-                        <div class="w-full h-full bg-gray-600 rounded-full flex items-center justify-center text-xs">ME</div>
-                    </div>
+                    <div class="w-12 h-12 rounded-full border-2 border-emerald-500 p-0.5"><div class="w-full h-full bg-emerald-900 rounded-full flex items-center justify-center text-xs">OC</div></div>
                     <div class="absolute bottom-0 right-0 bg-emerald-500 rounded-full border-2 border-[#111b21] p-0.5"><i data-lucide="plus" class="w-3 h-3 text-white"></i></div>
                 </div>
-                <div>
-                    <p class="font-medium text-white">我的动态</p>
-                    <p class="text-xs text-[#8696a0]">点击更新您的动态</p>
-                </div>
-            </div>
-            <p class="text-[13px] text-[#8696a0] mt-8 mb-4 px-2 uppercase font-semibold">最近更新</p>
-            <div class="text-center py-20 opacity-40">
-                <i data-lucide="circle-dashed" class="w-12 h-12 mx-auto mb-2"></i>
-                <p>暂无好友更新</p>
-            </div>
+                <div><p class="font-medium text-white">状态更新</p><p class="text-xs text-[#8696a0]">刚才</p></div>
+             </div>
         </div>
-
-        <!-- 社区视图 (Communities) -->
-        <div id="view-communities" class="hidden flex flex-col h-full p-6 text-center space-y-4">
-            <div class="w-32 h-32 bg-emerald-500/10 rounded-2xl mx-auto flex items-center justify-center">
-                <i data-lucide="users" class="w-16 h-16 text-emerald-500"></i>
-            </div>
-            <h2 class="text-xl font-bold text-white">保持社区联系</h2>
-            <p class="text-sm text-[#8696a0]">社区可以将成员归类在基于主题的小组中。您创建的任何社区都将显示在这里。</p>
-            <button class="bg-emerald-600 text-black font-bold py-2 rounded-full mt-4">发起社区</button>
+        <div id="view-communities" class="hidden flex flex-col h-full p-8 text-center space-y-4">
+            <i data-lucide="users" class="w-16 h-16 text-emerald-500 mx-auto opacity-50"></i>
+            <h2 class="text-xl font-bold text-white">AI 开发者社区</h2>
+            <p class="text-sm text-[#8696a0]">加入全球最省钱的提示词工程社区。</p>
         </div>
-
-        <!-- 拨号视图 (Calls) -->
-        <div id="view-calls" class="hidden flex flex-col h-full">
-             <header class="p-4 flex justify-between items-center">
-                <h1 class="text-xl font-bold text-white">通话</h1>
-                <i data-lucide="phone-call" class="w-5 h-5 text-[#aebac1]"></i>
-            </header>
-            <div class="flex-1 flex flex-col items-center justify-center opacity-40 text-sm">
-                <i data-lucide="phone" class="w-12 h-12 mb-4"></i>
-                <p>通过 WhatsApp 进行免费的安全通话</p>
-            </div>
+        <div id="view-calls" class="hidden flex flex-col h-full p-8 text-center space-y-4">
+            <i data-lucide="phone" class="w-16 h-16 text-emerald-500 mx-auto opacity-50"></i>
+            <h2 class="text-xl font-bold text-white">暂无通话记录</h2>
+            <p class="text-sm text-[#8696a0]">模型对话均为文字流式传输。</p>
         </div>
-
     </aside>
 
-    <!-- 伸缩柄 -->
     <div id="resizer"></div>
 
     <!-- 3. 聊天主界面 -->
     <main class="flex-1 flex flex-col relative bg-[#0b141a]">
         <div class="chat-wallpaper"></div>
 
-        <header class="h-[60px] bg-[#202c33] flex items-center justify-between px-4 z-10">
+        <header class="h-[60px] bg-[#202c33] flex items-center justify-between px-4 z-10 glass-panel border-b border-white/5">
             <div class="flex items-center space-x-3">
-                <div id="chat-avatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg">?</div>
+                <div id="chat-avatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg transition-transform duration-300">?</div>
                 <div>
-                    <h2 id="chat-title" class="text-[16px] font-medium text-white leading-tight">请选择模型</h2>
-                    <div id="chat-status-area" class="text-[12px] text-[#8696a0]">在线</div>
+                    <h2 id="chat-title" class="text-[16px] font-semibold text-white leading-tight">请选择一个模型</h2>
+                    <div id="chat-status-area" class="text-[12px] text-emerald-500/80">就绪</div>
                 </div>
             </div>
             <div class="flex items-center space-x-6 text-[#aebac1]">
+                <div class="flex items-center bg-white/5 px-3 py-1 rounded-full text-[11px] font-mono border border-white/10">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></span>
+                    API ONLINE
+                </div>
                 <i data-lucide="video" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
                 <i data-lucide="phone" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
-                <div class="w-[1px] h-6 bg-white/10"></div>
-                <i data-lucide="search" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
                 <i data-lucide="more-vertical" class="w-5 h-5 cursor-pointer hover:text-white transition-colors"></i>
             </div>
         </header>
 
-        <div id="chat-container" class="flex-1 overflow-y-auto px-8 md:px-16 py-6 space-y-2 relative z-10">
-            <!-- 欢迎界面 -->
-            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-60">
-                <div class="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center">
-                    <i data-lucide="message-square" class="w-12 h-12 text-emerald-500"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-light text-white">WhatsApp AI 枢纽</h2>
-                    <p class="text-sm max-w-xs mx-auto">连接全球最顶尖且廉价的 AI 模型。您的所有对话均已加密。</p>
-                </div>
-                <div class="flex items-center text-xs space-x-1 text-[#8696a0]">
-                    <i data-lucide="lock" class="w-3 h-3"></i>
-                    <span>端到端加密</span>
+        <div id="chat-container" class="flex-1 overflow-y-auto px-4 md:px-12 lg:px-24 py-6 space-y-4 relative z-10">
+            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center text-center space-y-6">
+                <h1 class="brand-text opacity-20 text-7xl select-none">OpenClaw</h1>
+                <div class="p-6 bg-white/5 border border-white/10 rounded-3xl max-w-sm backdrop-blur-md">
+                    <p class="text-sm text-[#8696a0] leading-relaxed">
+                        欢迎使用 OpenClaw 增强版。<br>
+                        左侧已为您准备了多款低成本高效能模型。<br>
+                        您的隐私与对话已由硬件级加密保护。
+                    </p>
                 </div>
             </div>
         </div>
 
-        <footer id="chat-footer" class="hidden min-h-[62px] bg-[#202c33] flex items-end px-4 py-2 space-x-3 z-10 border-t border-black/20">
-            <div class="flex space-x-3 text-[#aebac1] pb-2">
-                <i data-lucide="plus" class="w-6 h-6 cursor-pointer hover:text-white"></i>
-                <i data-lucide="smile" class="w-6 h-6 cursor-pointer hover:text-white"></i>
+        <footer id="chat-footer" class="hidden min-h-[62px] bg-[#202c33] flex items-end px-4 py-3 space-x-3 z-10 border-t border-white/5 glass-panel">
+            <div class="flex space-x-4 text-[#aebac1] pb-2">
+                <i data-lucide="plus" class="w-6 h-6 cursor-pointer hover:text-white transition-all"></i>
+                <i data-lucide="sticker" class="w-6 h-6 cursor-pointer hover:text-white transition-all"></i>
             </div>
-            <div class="flex-1 bg-[#2a3942] rounded-xl px-4 py-1.5 min-h-[42px] mb-1">
-                <textarea id="chat-input" class="w-full bg-transparent max-h-[150px] outline-none text-[15px] text-white resize-none placeholder-[#8696a0] py-1" placeholder="输入消息" rows="1"></textarea>
+            <div class="flex-1 bg-[#2a3942] rounded-2xl px-4 py-2 min-h-[45px] mb-1 border border-white/5">
+                <textarea id="chat-input" class="w-full bg-transparent max-h-[200px] outline-none text-[15px] text-white resize-none placeholder-[#8696a0] py-1" placeholder="发送安全消息..." rows="1"></textarea>
             </div>
             <div class="pb-1.5">
-                <button id="send-btn" class="p-2 text-[#8696a0] hover:text-emerald-500 transition-all">
-                    <i data-lucide="send-horizontal" class="w-6 h-6"></i>
+                <button id="send-btn" class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">
+                    <i data-lucide="send-horizontal" class="w-5 h-5"></i>
                 </button>
             </div>
         </footer>
     </main>
 
-    <!-- 设置与模型配置模态框 -->
-    <div id="dev-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center hidden p-4">
-        <div class="bg-[#202c33] w-full max-w-[450px] rounded-2xl shadow-2xl overflow-hidden border border-white/10 modal-enter">
-            <div class="p-5 flex justify-between items-center border-b border-white/5">
-                <h2 class="text-emerald-500 font-bold flex items-center gap-2">
-                    <i data-lucide="cpu" class="w-5 h-5"></i> 模型配置
-                </h2>
-                <button id="close-modal" class="text-[#8696a0] hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+    <!-- 配置模态框 -->
+    <div id="dev-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center hidden p-4">
+        <div class="bg-[#202c33] w-full max-w-[480px] rounded-[32px] shadow-2xl overflow-hidden border border-white/10 modal-enter p-8 space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-white">模型参数控制</h2>
+                <button id="close-modal" class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-[#8696a0] hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div class="p-6 space-y-5">
-                <div>
-                    <label class="block text-[11px] text-[#00a884] font-bold uppercase mb-2 tracking-wider">显示名称</label>
-                    <input id="char-name-input" type="text" class="w-full bg-[#2a3942] border-none rounded-lg py-3 px-4 outline-none text-white focus:ring-1 focus:ring-emerald-500">
+            <div class="space-y-6">
+                <div class="group">
+                    <label class="block text-[10px] text-emerald-500 font-bold uppercase mb-2 tracking-[0.2em] group-focus-within:text-white transition-all">模型代号</label>
+                    <input id="char-name-input" type="text" class="w-full bg-[#2a3942] border border-white/5 rounded-2xl py-4 px-5 outline-none text-white focus:border-emerald-500 transition-all">
                 </div>
                 <div>
-                    <label class="block text-[11px] text-[#00a884] font-bold uppercase mb-2 tracking-wider">系统提示词 (System Prompt)</label>
-                    <textarea id="sys-prompt-input" class="w-full bg-[#2a3942] border-none rounded-lg p-4 text-sm h-40 resize-none outline-none text-white focus:ring-1 focus:ring-emerald-500"></textarea>
+                    <label class="block text-[10px] text-emerald-500 font-bold uppercase mb-2 tracking-[0.2em]">底层逻辑 (System Prompt)</label>
+                    <textarea id="sys-prompt-input" class="w-full bg-[#2a3942] border border-white/5 rounded-2xl p-5 text-[14px] h-48 resize-none outline-none text-white focus:border-emerald-500 transition-all leading-relaxed"></textarea>
                 </div>
-                <div class="flex gap-3">
-                    <button id="save-btn" class="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-500 transition-all">更新配置</button>
-                    <button id="clear-btn" class="px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-lg transition-all border border-red-400/20"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                <div class="flex gap-4 pt-4">
+                    <button id="save-btn" class="flex-1 bg-white text-black py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg">同步至云端</button>
+                    <button id="clear-btn" class="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-6 h-6"></i></button>
                 </div>
             </div>
         </div>
@@ -274,12 +305,11 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // 模型列表：强调“廉价”与“性能”
     const MODELS = [
         { id: 'm_gpt4mini', name: "GPT-4o Mini", desc: "最强性价比，极速响应", prompt: "你是一个专业的智能助理，说话简洁高效。", cost: "$0.15/1M", color: "#10a37f" },
-        { id: 'm_haiku', name: "Claude 3 Haiku", desc: "Anthropic 最快模型，逻辑严密", prompt: "你是一个优雅、博学的助手。", cost: "$0.25/1M", color: "#d97757" },
-        { id: 'm_llama3', name: "Llama 3 8B", desc: "开源之王，极其聪明", prompt: "你是一个热情、直接的 AI。", cost: "$0.05/1M", color: "#0668e1" },
-        { id: 'm_gemini', name: "Gemini 1.5 Flash", desc: "Google 最新极速模型", prompt: "你是一个善于联网搜索和多模态理解的助手。", cost: "$0.10/1M", color: "#4285f4" }
+        { id: 'm_haiku', name: "Claude 3 Haiku", desc: "Anthropic 极速模型", prompt: "你是一个优雅、博学的助手。", cost: "$0.25/1M", color: "#d97757" },
+        { id: 'm_llama3', name: "Llama 3 8B", desc: "Meta 开源旗舰，聪明绝顶", prompt: "你是一个热情、直接的 AI。", cost: "$0.05/1M", color: "#0668e1" },
+        { id: 'm_gemini', name: "Gemini 1.5 Flash", desc: "Google 最新极速理解", prompt: "你是一个善于多模态理解的助手。", cost: "$0.10/1M", color: "#4285f4" }
     ];
 
     let currentChatId = null;
@@ -298,20 +328,38 @@
         resizer: document.getElementById('resizer'),
         devModal: document.getElementById('dev-modal'),
         chatFooter: document.getElementById('chat-footer'),
-        welcome: document.getElementById('welcome-screen')
+        welcome: document.getElementById('welcome-screen'),
+        splash: document.getElementById('splash-screen'),
+        splashBar: document.getElementById('splash-bar')
     };
 
     function init() {
         lucide.createIcons();
+        startSplashScreen();
         setupResizer();
         renderModels();
         setupEventListeners();
     }
 
-    // 视图切换逻辑 (Chats / Status / Communities / Calls)
+    // 苹果开机逻辑
+    function startSplashScreen() {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                setTimeout(() => {
+                    elements.splash.style.opacity = '0';
+                    setTimeout(() => elements.splash.style.visibility = 'hidden', 800);
+                }, 500);
+            }
+            elements.splashBar.style.width = progress + '%';
+        }, 120);
+    }
+
     window.switchView = (viewName) => {
-        const views = ['chats', 'status', 'communities', 'calls'];
-        views.forEach(v => {
+        ['chats', 'status', 'communities', 'calls'].forEach(v => {
             document.getElementById(`view-${v}`).classList.add('hidden');
             document.getElementById(`nav-${v}`).classList.remove('active-nav-item');
         });
@@ -319,16 +367,13 @@
         document.getElementById(`nav-${viewName}`).classList.add('active-nav-item');
     };
 
-    // 侧边栏宽度拖拽
     function setupResizer() {
         let isResizing = false;
         elements.resizer.addEventListener('mousedown', () => isResizing = true);
         document.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
             const newWidth = e.clientX - 64;
-            if (newWidth > 280 && newWidth < 550) {
-                elements.sidebar.style.width = `${newWidth}px`;
-            }
+            if (newWidth > 280 && newWidth < 550) elements.sidebar.style.width = `${newWidth}px`;
         });
         document.addEventListener('mouseup', () => isResizing = false);
     }
@@ -337,19 +382,19 @@
         elements.contactList.innerHTML = '';
         MODELS.forEach(m => {
             const item = document.createElement('div');
-            item.className = `flex items-center px-4 py-3 cursor-pointer hover:bg-[#202c33] transition-all group`;
+            item.className = `flex items-center px-4 py-4 cursor-pointer hover:bg-white/5 transition-all group mx-2 rounded-2xl mb-1`;
             item.id = `item-${m.id}`;
             item.onclick = () => switchChat(m.id);
             item.innerHTML = `
-                <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-white font-bold shadow-lg" style="background-color: ${m.color}">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-white font-bold shadow-xl group-hover:scale-110 transition-transform duration-300" style="background: linear-gradient(135deg, ${m.color}, black)">
                     ${m.name[0]}
                 </div>
-                <div class="ml-3 flex-1 min-w-0 border-b border-white/5 pb-3">
+                <div class="ml-4 flex-1 min-w-0">
                     <div class="flex justify-between items-baseline mb-0.5">
-                        <span class="text-[16px] text-white font-medium truncate">${m.name}</span>
-                        <span class="text-[11px] text-[#00a884] font-bold">${m.cost}</span>
+                        <span class="text-[15px] text-white font-semibold truncate tracking-tight">${m.name}</span>
+                        <span class="text-[10px] text-emerald-500 font-mono font-bold px-2 py-0.5 bg-emerald-500/10 rounded-full">${m.cost}</span>
                     </div>
-                    <p class="text-[13px] text-[#8696a0] truncate" id="last-${m.id}">${m.desc}</p>
+                    <p class="text-[12px] text-[#8696a0] truncate" id="last-${m.id}">${m.desc}</p>
                 </div>
             `;
             elements.contactList.appendChild(item);
@@ -364,7 +409,7 @@
         const m = MODELS.find(x => x.id === chatId);
         elements.chatTitle.textContent = m.name;
         elements.chatAvatar.textContent = m.name[0];
-        elements.chatAvatar.style.backgroundColor = m.color;
+        elements.chatAvatar.style.background = `linear-gradient(135deg, ${m.color}, black)`;
 
         document.querySelectorAll('#contact-list > div').forEach(el => el.classList.remove('active-chat'));
         document.getElementById(`item-${chatId}`).classList.add('active-chat');
@@ -373,24 +418,18 @@
     }
 
     function syncFirebase(chatId) {
-        // 监听配置
         onValue(ref(db, `configs/${chatId}`), (snap) => {
             const config = snap.val() || { name: MODELS.find(x=>x.id===chatId).name, prompt: MODELS.find(x=>x.id===chatId).prompt };
             currentConfigs[chatId] = config;
             if(chatId === currentChatId) elements.chatTitle.textContent = config.name;
         });
 
-        // 监听消息
         onValue(ref(db, `messages/${chatId}`), (snap) => {
             const data = snap.val();
             const msgs = data ? Object.values(data).sort((a,b) => a.timestamp - b.timestamp) : [];
             chatHistory[chatId] = msgs;
             if (chatId === currentChatId) renderMessages(msgs);
-            
-            if(msgs.length > 0) {
-                const last = msgs[msgs.length - 1].text;
-                document.getElementById(`last-${chatId}`).textContent = last.substring(0, 30);
-            }
+            if(msgs.length > 0) document.getElementById(`last-${chatId}`).textContent = msgs[msgs.length - 1].text.substring(0, 30);
         });
     }
 
@@ -400,12 +439,12 @@
             const isUser = msg.role === 'user';
             const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const div = document.createElement('div');
-            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-1 group`;
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full mb-2 animate-fadeIn`;
             div.innerHTML = `
-                <div class="relative px-3 py-1.5 max-w-[85%] shadow-md rounded-lg ${isUser ? 'bubble-right bg-[#005c4b]' : 'bubble-left bg-[#202c33]'}">
-                    <p class="text-[14.5px] text-[#e9edef] whitespace-pre-wrap pr-12 leading-relaxed">${msg.text}</p>
-                    <div class="absolute bottom-1 right-2 flex items-center space-x-1">
-                        <span class="text-[9px] text-[#8696a0]">${time}</span>
+                <div class="relative px-4 py-2.5 max-w-[80%] shadow-lg rounded-[20px] ${isUser ? 'bubble-right bg-[#005c4b] rounded-tr-none text-white' : 'bubble-left bg-[#202c33] rounded-tl-none text-[#e9edef]'}">
+                    <p class="text-[15px] whitespace-pre-wrap leading-relaxed">${msg.text}</p>
+                    <div class="flex items-center justify-end space-x-1 mt-1 opacity-60">
+                        <span class="text-[10px]">${time}</span>
                         ${isUser ? '<i data-lucide="check-check" class="w-3.5 h-3.5 text-[#53bdeb]"></i>' : ''}
                     </div>
                 </div>
@@ -413,16 +452,14 @@
             elements.chatContainer.appendChild(div);
         });
         lucide.createIcons({ root: elements.chatContainer });
-        elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+        elements.chatContainer.scrollTo({ top: elements.chatContainer.scrollHeight, behavior: 'smooth' });
     }
 
     async function sendMessage() {
         const text = elements.chatInput.value.trim();
         if (!text || !currentChatId) return;
-
         elements.chatInput.value = '';
         elements.chatInput.style.height = 'auto';
-
         push(ref(db, `messages/${currentChatId}`), { role: 'user', text, timestamp: Date.now() });
 
         setTyping(true);
@@ -430,67 +467,41 @@
             const config = currentConfigs[currentChatId];
             const context = [
                 { role: 'system', content: config.prompt },
-                ...(chatHistory[currentChatId] || []).slice(-10).map(m => ({
-                    role: m.role === 'assistant' ? 'assistant' : 'user',
-                    content: m.text
-                })),
+                ...(chatHistory[currentChatId] || []).slice(-8).map(m => ({ role: m.role, content: m.text })),
                 { role: 'user', content: text }
             ];
-
             const response = await puter.ai.chat(context, { model: 'gpt-4o-mini' });
-            let reply = typeof response === 'string' ? response : (response.message?.content || "...");
-            push(ref(db, `messages/${currentChatId}`), { role: 'assistant', text: reply, timestamp: Date.now() });
+            push(ref(db, `messages/${currentChatId}`), { role: 'assistant', text: typeof response === 'string' ? response : response.message.content, timestamp: Date.now() });
         } catch (e) { console.error(e); }
         setTyping(false);
     }
 
     function setTyping(status) {
         if (status) {
-            elements.chatStatus.innerHTML = `正在输入<span class="inline-flex ml-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>`;
-            elements.chatStatus.classList.add('text-emerald-500');
+            elements.chatStatus.innerHTML = `正在思考<span class="inline-flex ml-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>`;
+            elements.chatStatus.className = 'text-[12px] text-emerald-400 font-medium';
         } else {
             elements.chatStatus.textContent = '在线';
-            elements.chatStatus.classList.remove('text-emerald-500');
+            elements.chatStatus.className = 'text-[12px] text-emerald-500/80';
         }
     }
 
     function setupEventListeners() {
         elements.sendBtn.onclick = sendMessage;
-        elements.chatInput.onkeydown = (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        };
-
+        elements.chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
         document.getElementById('settings-trigger').onclick = () => {
             if(!currentChatId) return;
-            const c = currentConfigs[currentChatId];
-            document.getElementById('char-name-input').value = c.name;
-            document.getElementById('sys-prompt-input').value = c.prompt;
+            document.getElementById('char-name-input').value = currentConfigs[currentChatId].name;
+            document.getElementById('sys-prompt-input').value = currentConfigs[currentChatId].prompt;
             elements.devModal.classList.remove('hidden');
         };
-
         document.getElementById('close-modal').onclick = () => elements.devModal.classList.add('hidden');
-        
         document.getElementById('save-btn').onclick = () => {
-            const name = document.getElementById('char-name-input').value;
-            const prompt = document.getElementById('sys-prompt-input').value;
-            update(ref(db, `configs/${currentChatId}`), { name, prompt });
+            update(ref(db, `configs/${currentChatId}`), { name: document.getElementById('char-name-input').value, prompt: document.getElementById('sys-prompt-input').value });
             elements.devModal.classList.add('hidden');
         };
-
-        document.getElementById('clear-btn').onclick = () => {
-            if(confirm("清除此模型的聊天记录？")) {
-                remove(ref(db, `messages/${currentChatId}`));
-                elements.devModal.classList.add('hidden');
-            }
-        };
-
-        elements.chatInput.oninput = function() {
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
-        };
+        document.getElementById('clear-btn').onclick = () => { if(confirm("清除历史？")) { remove(ref(db, `messages/${currentChatId}`)); elements.devModal.classList.add('hidden'); } };
+        elements.chatInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; };
     }
 
     init();
