@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Smart Cube (Pro Max)</title>
+    <title>Smart cube solver</title>
     <!-- 引入 Three.js 及 OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -195,11 +195,11 @@
 
     <div class="loading-overlay" id="loading">
         <div class="spinner"></div>
-        <div>MATRIX INITIALIZING</div>
+        <div>MADE BY ZHANYI ZHOU</div>
     </div>
 
     <div class="panel">
-        <div class="title">NXN PRO MAX</div>
+        <div class="title">Agocrate cube solver</div>
         
         <div class="control-group">
             <span class="label">维度 (2-30)</span>
@@ -512,7 +512,7 @@
             if (isMoving) return;
             abortProcess = false;
             setUIState(true);
-            document.getElementById('status').innerHTML = `正在生成 <span>熵增混沌状态</span>...`;
+            document.getElementById('status').innerHTML = `MADE BY <span>ZHANYI ZHOU</span>...`;
             
             const axes = ['x', 'y', 'z'];
             const dirs = [1, -1];
