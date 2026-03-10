@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Cube (Pro Max)</title>
+    <!-- 引入 Three.js 及 OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        :root {
+            --primary: #00e5ff;
+            --primary-glow: rgba(0, 229, 255, 0.4);
+            --bg-center: #1a1e29;
+            --bg-edge: #050508;
+            --glass: rgba(15, 20, 30, 0.65);
+        }
+        
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            /* 影视级深邃背景 */
+            background: radial-gradient(circle at 50% 50%, var(--bg-center) 0%, var(--bg-edge) 100%);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            color: white;
+        }
+        
+        canvas { display: block; }
+        
+        .panel {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 24px;
+            border-radius: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+            width: 280px;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, #ffffff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .label {
+            font-size: 13px;
+            color: #a0aabf;
+            font-weight: 600;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--primary);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 800;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+        }
+        input[type="number"]:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+        /* 滑块样式优化 */
+        input[type="range"] {
+            flex-grow: 1;
+            height: 6px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--primary-glow);
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 14px 0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            text-align: center;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn:hover::before { left: 100%; }
+        
+        .btn:hover { 
+            background: rgba(0, 229, 255, 0.1); 
+            border-color: var(--primary); 
+            color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow); 
+        }
+        .btn:active { transform: translateY(2px); }
+        .btn.disabled { opacity: 0.4; pointer-events: none; border-color: transparent; }
+        .btn.danger:hover { background: rgba(255, 50, 50, 0.1); border-color: #ff3232; color: #ff3232; box-shadow: 0 0 20px rgba(255,50,50,0.3); }
+
+        .stats {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #status {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            letter-spacing: 6px;
+            font-weight: 300;
+            pointer-events: none;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        #status span { color: var(--primary); font-weight: bold; text-shadow: 0 0 15px var(--primary-glow); }
+        
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-center);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 300;
+            letter-spacing: 4px;
+            transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid rgba(0, 229, 255, 0.2);
+            border-top: 3px solid var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div>MATRIX INITIALIZING</div>
+    </div>
+
+    <div class="panel">
+        <div class="title">NXN PRO MAX</div>
+        
+        <div class="control-group">
+            <span class="label">维度 (2-30)</span>
+            <input type="number" id="cubeSize" value="3" min="2" max="30">
+        </div>
+        
+        <div class="control-group" style="margin-top: -5px;">
+            <span class="label">引擎流速</span>
+            <input type="range" id="speedSlider" min="1" max="50" value="5">
+        </div>
+
+        <div class="btn" id="buildBtn" onclick="applyNewSize()">重构量子矩阵</div>
+        <div style="height:1px; background:rgba(255,255,255,0.05); margin: 2px 0;"></div>
+        
+        <div class="btn" id="scrambleBtn" onclick="scramble()">深度随机打乱</div>
+        <div class="btn" id="solveBtn" onclick="solveByAI()">开始视觉推算还原</div>
+        <div class="btn danger disabled" id="stopBtn" onclick="stopProcess()">强行中断运算</div>
+        
+        <div class="stats">
+            <span id="pieceCount">物理区块: 0</span>
+            <span id="moveCount">位移步数: 0</span>
+        </div>
+    </div>
+
+    <div id="status">全息拟真系统 <span>就绪</span></div>
+
+    <script>
+        // --- 全局核心状态 ---
+        let scene, camera, renderer, controls, cubeGroup;
+        let pieces = [];
+        let isMoving = false;
+        let N = 3;
+        let moveHistory = [];
+        let baseOffset = 0;
+        let abortProcess = false; // 用于随时中断长动画
+
+        // 极致的视觉调色板
+        const PALETTE = {
+            R: new THREE.Color(0xff2a2a), // 亮红
+            L: new THREE.Color(0xff8c00), // 橙色
+            U: new THREE.Color(0xffffff), // 纯白
+            D: new THREE.Color(0xffd500), // 金黄
+            F: new THREE.Color(0x00e5ff), // 赛博蓝绿
+            B: new THREE.Color(0x2962ff), // 深蓝
+            CORE: new THREE.Color(0x050505) // 深邃黑核
+        };
+
+        // 核心优化：MeshPhysicalMaterial 打造顶级类烤漆塑料质感
+        const premiumMaterial = new THREE.MeshPhysicalMaterial({
+            vertexColors: true,
+            roughness: 0.15,         // 表面非常光滑
+            metalness: 0.1,          // 微微金属感
+            clearcoat: 1.0,          // 启用清漆层反射
+            clearcoatRoughness: 0.1, // 清漆层锐利度
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+        });
+        
+        const edgesMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x000000, 
+            transparent: true, 
+            opacity: 0.7 
+        });
+
+        const baseBoxGeom = new THREE.BoxGeometry(0.95, 0.95, 0.95).toNonIndexed();
+        const edgesGeom = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.95, 0.95, 0.95));
+        const vertexCount = baseBoxGeom.getAttribute('position').count;
+
+        function init() {
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 2000);
+            
+            // 开启 alpha: true 与透明背景完美融合
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // 物理光照校正
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.04;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.8;
+            controls.minDistance = 3;
+            controls.maxDistance = 200;
+
+            setupStudioLighting();
+
+            buildCube(N);
+            animate();
+
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+        }
+
+        // --- 纯代码构建虚拟影棚光影系统 ---
+        function setupStudioLighting() {
+            // 环境基底光
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            
+            // 主灯 (Key Light) - 明亮，提供主体照明
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            keyLight.position.set(10, 20, 15);
+            scene.add(keyLight);
+            
+            // 补光 (Fill Light) - 偏蓝，照亮暗部
+            const fillLight = new THREE.DirectionalLight(0x88bbff, 0.8);
+            fillLight.position.set(-15, 0, -15);
+            scene.add(fillLight);
+            
+            // 轮廓光 (Rim Light) - 赛博品红/紫，从下方打上来，极强立体感
+            const rimLight = new THREE.SpotLight(0xff00aa, 5);
+            rimLight.position.set(0, -20, 0);
+            rimLight.angle = Math.PI / 3;
+            rimLight.penumbra = 0.8;
+            scene.add(rimLight);
+
+            // 顶部天光 (Top Light) - 增加清漆层的反射
+            const topLight = new THREE.PointLight(0x00e5ff, 1);
+            topLight.position.set(0, 15, 0);
+            scene.add(topLight);
+        }
+
+        // --- 超高性能几何生成与智能边缘适配 ---
+        function createPieceGeometry(x, y, z, size) {
+            const geom = baseBoxGeom.clone();
+            const colors = new Float32Array(vertexCount * 3);
+
+            const applyFaceColor = (faceIdx, color) => {
+                const start = faceIdx * 6;
+                for (let i = 0; i < 6; i++) {
+                    colors[(start + i) * 3]     = color.r;
+                    colors[(start + i) * 3 + 1] = color.g;
+                    colors[(start + i) * 3 + 2] = color.b;
+                }
+            };
+
+            applyFaceColor(0, x === size - 1 ? PALETTE.R : PALETTE.CORE);
+            applyFaceColor(1, x === 0 ? PALETTE.L : PALETTE.CORE);
+            applyFaceColor(2, y === size - 1 ? PALETTE.U : PALETTE.CORE);
+            applyFaceColor(3, y === 0 ? PALETTE.D : PALETTE.CORE);
+            applyFaceColor(4, z === size - 1 ? PALETTE.F : PALETTE.CORE);
+            applyFaceColor(5, z === 0 ? PALETTE.B : PALETTE.CORE);
+
+            geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            return geom;
+        }
+
+        function buildCube(size) {
+            if (cubeGroup) scene.remove(cubeGroup);
+            
+            // 内存回收
+            pieces.forEach(p => {
+                p.geometry.dispose();
+                p.children.forEach(c => c.geometry && c.geometry.dispose());
+            });
+            pieces = [];
+            moveHistory = [];
+            document.getElementById('moveCount').innerText = `位移步数: 0`;
+            
+            cubeGroup = new THREE.Group();
+            scene.add(cubeGroup);
+            
+            baseOffset = (size - 1) / 2;
+
+            // 动态视距，完美包裹
+            const camDistance = Math.max(size * 1.9, 7);
+            camera.position.set(camDistance, camDistance * 0.8, camDistance * 1.2);
+            controls.target.set(0, 0, 0);
+
+            let renderCount = 0;
+            const useEdges = size <= 12; // 智能降级：只有 12 阶以内启用黑边框，保证超高阶也能满帧
+
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    for (let z = 0; z < size; z++) {
+                        // 【中空剔除算法】剥离所有看不见的内部核，性能爆炸提升
+                        if (x > 0 && x < size - 1 && y > 0 && y < size - 1 && z > 0 && z < size - 1) continue;
+
+                        const geom = createPieceGeometry(x, y, z, size);
+                        const mesh = new THREE.Mesh(geom, premiumMaterial);
+                        mesh.position.set(x - baseOffset, y - baseOffset, z - baseOffset);
+                        
+                        // 添加真实的黑线描边提升质感
+                        if (useEdges) {
+                            const edgeLines = new THREE.LineSegments(edgesGeom, edgesMaterial);
+                            mesh.add(edgeLines);
+                        }
+                        
+                        cubeGroup.add(mesh);
+                        pieces.push(mesh);
+                        renderCount++;
+                    }
+                }
+            }
+            
+            document.getElementById('pieceCount').innerText = `物理区块: ${renderCount} (核剔除)`;
+            document.getElementById('status').innerHTML = `构建完毕：<span>${size}x${size}</span> 高精度矩阵`;
+        }
+
+        function applyNewSize() {
+            if (isMoving) return;
+            let newSize = parseInt(document.getElementById('cubeSize').value);
+            if (isNaN(newSize) || newSize < 2) newSize = 2;
+            if (newSize > 30) newSize = 30; 
+            document.getElementById('cubeSize').value = newSize;
+            N = newSize;
+            
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading').style.opacity = '1';
+            
+            setTimeout(() => {
+                buildCube(N);
+                document.getElementById('loading').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading').style.display = 'none', 300);
+            }, 50);
+        }
+
+        // --- 核心修复：平滑而绝不跳帧的矩阵旋转算法 ---
+        async function rotateLayer(axis, layerIndex, direction) {
+            isMoving = true;
+            controls.autoRotate = false;
+
+            const axisVec = new THREE.Vector3();
+            axisVec[axis] = 1;
+            
+            const movingPieces = [];
+            const targetPos = layerIndex - baseOffset;
+
+            // 精度收集
+            cubeGroup.updateMatrixWorld();
+            pieces.forEach(p => {
+                p.updateMatrixWorld();
+                const pos = new THREE.Vector3().setFromMatrixPosition(p.matrixWorld);
+                if (Math.abs(pos[axis] - targetPos) < 0.1) movingPieces.push(p);
+            });
+
+            const pivot = new THREE.Object3D();
+            scene.add(pivot);
+            movingPieces.forEach(p => pivot.attach(p));
+
+            const angle = (Math.PI / 2) * direction;
+            
+            // 动态速度计算：从 UI 读取
+            const speedMultiplier = parseFloat(document.getElementById('speedSlider').value);
+            
+            // 修复瞬移的核心逻辑：限制最小动画时长为 16ms (约1帧)，让眼睛一定能看清过程
+            const baseDuration = 400; 
+            let duration = baseDuration / speedMultiplier;
+            if (duration < 16) duration = 16; 
+
+            const start = performance.now();
+
+            return new Promise(res => {
+                function step() {
+                    const elapsed = performance.now() - start;
+                    const t = Math.min(elapsed / duration, 1);
+                    
+                    // 顺滑缓动：Sine.easeInOut
+                    const ease = -(Math.cos(Math.PI * t) - 1) / 2;
+                    pivot.rotation[axis] = angle * ease;
+
+                    if (t < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        // 还原位置
+                        pivot.updateMatrixWorld();
+                        movingPieces.forEach(p => {
+                            cubeGroup.attach(p);
+                            
+                            // 完美的整数级矩阵坐标吸附，永不形变
+                            p.updateMatrix();
+                            const e = p.matrix.elements;
+                            for (let i of [0, 1, 2, 4, 5, 6, 8, 9, 10]) e[i] = Math.round(e[i]);
+                            e[12] = Math.round(e[12] + baseOffset) - baseOffset;
+                            e[13] = Math.round(e[13] + baseOffset) - baseOffset;
+                            e[14] = Math.round(e[14] + baseOffset) - baseOffset;
+                            p.matrix.decompose(p.position, p.quaternion, p.scale);
+                        });
+                        
+                        scene.remove(pivot);
+                        isMoving = false;
+                        res();
+                    }
+                }
+                step();
+            });
+        }
+
+        // --- 业务与控制逻辑 ---
+        function setUIState(running) {
+            document.getElementById('buildBtn').classList.toggle('disabled', running);
+            document.getElementById('scrambleBtn').classList.toggle('disabled', running);
+            document.getElementById('solveBtn').classList.toggle('disabled', running);
+            document.getElementById('stopBtn').classList.toggle('disabled', !running);
+        }
+
+        function stopProcess() {
+            abortProcess = true;
+            document.getElementById('status').innerHTML = `操作 <span>已强制中断</span>`;
+        }
+
+        async function scramble() {
+            if (isMoving) return;
+            abortProcess = false;
+            setUIState(true);
+            document.getElementById('status').innerHTML = `正在生成 <span>熵增混沌状态</span>...`;
+            
+            const axes = ['x', 'y', 'z'];
+            const dirs = [1, -1];
+            // 高阶魔方打乱步数封顶 800，保证合理时间体验
+            const moves = Math.min(N * N * 2, 800); 
+
+            for (let i = 0; i < moves; i++) {
+                if (abortProcess) break;
+                const ax = axes[Math.floor(Math.random() * axes.length)];
+                const lay = Math.floor(Math.random() * N);
+                const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                
+                moveHistory.push({ axis: ax, layer: lay, dir: dir });
+                
+                await rotateLayer(ax, lay, dir);
+                
+                if (i % 3 === 0) document.getElementById('moveCount').innerText = `位移步数: ${moveHistory.length}`;
+            }
+            
+            document.getElementById('moveCount').innerText = `位移步数: ${moveHistory.length}`;
+            if(!abortProcess) document.getElementById('status').innerHTML = `混沌生成完毕 · 等待 <span>AI 指令</span>`;
+            setUIState(false);
+        }
+
+        async function solveByAI() {
+            if (isMoving || moveHistory.length === 0) return;
+            abortProcess = false;
+            setUIState(true);
+            document.getElementById('status').innerHTML = `启动 <span>可视逆向追踪</span> 回源...`;
+            
+            // 展现过程：挨个弹栈，执行反向动作
+            while(moveHistory.length > 0) {
+                if (abortProcess) break;
+                const move = moveHistory.pop();
+                
+                // 执行反向旋转 (-move.dir)
+                await rotateLayer(move.axis, move.layer, -move.dir);
+                
+                document.getElementById('moveCount').innerText = `剩余归位步数: ${moveHistory.length}`;
+            }
+
+            if(!abortProcess && moveHistory.length === 0) {
+                document.getElementById('status').innerHTML = `矩阵 <span>已达成完美统一</span>`;
+            }
+            controls.autoRotate = true;
+            setUIState(false);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+    </script>
+</body>
+</html>
