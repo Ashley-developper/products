@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRECISION CHRONOMETER - 06.19</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;400;700;800&display=swap');
+        
+        :root {
+            --pfd-cyan: #00e5ff;
+            --pfd-green: #00ff41;
+            --pfd-dim: #111;
+            --pfd-border: #222;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            text-transform: uppercase;
+        }
+
+        .instrument-panel {
+            width: 90vw;
+            max-width: 1100px;
+            padding: 40px;
+            border-left: 2px solid var(--pfd-border);
+            position: relative;
+        }
+
+        /* 滑轮滚动容器 */
+        .roller-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .roller-box {
+            flex: 1;
+            height: 140px;
+            background: var(--pfd-dim);
+            border: 1px solid var(--pfd-border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .roller-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 0.6rem;
+            color: #444;
+            font-weight: 700;
+        }
+
+        .roller-value {
+            font-size: clamp(2rem, 6vw, 4rem);
+            font-weight: 800;
+            color: var(--pfd-cyan);
+            line-height: 1;
+        }
+
+        /* 极细进度条 */
+        .progress-section {
+            margin-top: 60px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 2px;
+            background: #111;
+            position: relative;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: var(--pfd-cyan);
+            width: 0%;
+            box-shadow: 0 0 10px var(--pfd-cyan);
+            transition: width 0.1s linear;
+        }
+
+        /* 百分比显示 - 小数点后20位 */
+        .precision-data {
+            margin-top: 15px;
+            font-size: 0.75rem;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #percent-full {
+            color: var(--pfd-green);
+            font-weight: 400;
+            letter-spacing: 0.05em;
+        }
+
+        /* 装饰用扫描线 */
+        .scanline {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: rgba(0, 229, 255, 0.03);
+            z-index: 100;
+            animation: scan 4s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            from { top: -2%; }
+            to { top: 102%; }
+        }
+
+        .decimal-group {
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanline"></div>
+
+    <div class="instrument-panel">
+        <div class="mb-10 flex justify-between items-end border-b border-[#222] pb-4">
+            <div>
+                <div class="text-[0.6rem] text-[#444] tracking-[0.5em]">MISSION CONFIGURATION</div>
+                <div class="text-sm text-gray-400">TGT_ARR: 2026-06-19 00:00:00Z</div>
+            </div>
+            <div class="text-right">
+                <div class="text-[0.6rem] text-[#444] tracking-[0.5em]">REFERENCE_START</div>
+                <div class="text-sm text-gray-400">2026-01-01 00:00:00Z</div>
+            </div>
+        </div>
+
+        <!-- 数字滑轮组 -->
+        <div class="roller-container">
+            <div class="roller-box">
+                <span class="roller-label">MONTHS</span>
+                <span class="roller-value" id="val-m">00</span>
+            </div>
+            <div class="roller-box">
+                <span class="roller-label">DAYS</span>
+                <span class="roller-value" id="val-d">00</span>
+            </div>
+            <div class="roller-box">
+                <span class="roller-label">HOURS</span>
+                <span class="roller-value" id="val-h">00</span>
+            </div>
+            <div class="roller-box">
+                <span class="roller-label">MINUTES</span>
+                <span class="roller-value" id="val-min">00</span>
+            </div>
+            <div class="roller-box">
+                <span class="roller-label">SECONDS</span>
+                <span class="roller-value" id="val-sec">00</span>
+            </div>
+        </div>
+
+        <!-- 进度条区域 -->
+        <div class="progress-section">
+            <div class="progress-track">
+                <div id="progress-fill"></div>
+            </div>
+            <div class="precision-data">
+                <div>
+                    <span>LOAD_INDEX: </span>
+                    <span id="percent-full">0.00000000000000000000%</span>
+                </div>
+                <div class="text-right">
+                    STATUS: <span class="text-white">EN_ROUTE</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-20 opacity-20 flex gap-4 text-[0.5rem] text-gray-500">
+            <span>BIT_RATE: 2048KBPS</span>
+            <span>OS_VER: 10.0.19044</span>
+            <span>BUFFER: NOMINAL</span>
+            <span id="sys-clock">UTC 00:00:00</span>
+        </div>
+    </div>
+
+    <script>
+        // 定义关键时间点
+        const TARGET = new Date('2026-06-19T00:00:00').getTime();
+        const START_REF = new Date('2026-01-01T00:00:00').getTime();
+
+        function update() {
+            const now = new Date();
+            const nowMs = now.getTime();
+            const diff = TARGET - nowMs;
+
+            if (diff <= 0) {
+                document.body.innerHTML = "<div style='color:var(--pfd-green); font-size:3rem; font-weight:100; letter-spacing:0.5em;'>MISSION ACCOMPLISHED</div>";
+                return;
+            }
+
+            // 1. 倒计时逻辑计算
+            const targetDate = new Date('2026-06-19T00:00:00');
+            let months = (targetDate.getFullYear() - now.getFullYear()) * 12 + (targetDate.getMonth() - now.getMonth());
+            let daysInMonth = targetDate.getDate() - now.getDate();
+            
+            if (daysInMonth < 0) {
+                months--;
+                const lastDayOfPrevMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 0).getDate();
+                daysInMonth += lastDayOfPrevMonth;
+            }
+
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diff / (1000 * 60)) % 60);
+            const s = Math.floor((diff / 1000) % 60);
+
+            // 更新翻转读数
+            document.getElementById('val-m').innerText = String(months).padStart(2, '0');
+            document.getElementById('val-d').innerText = String(daysInMonth).padStart(2, '0');
+            document.getElementById('val-h').innerText = String(h).padStart(2, '0');
+            document.getElementById('val-min').innerText = String(m).padStart(2, '0');
+            document.getElementById('val-sec').innerText = String(s).padStart(2, '0');
+
+            // 2. 高精度进度计算
+            const totalDuration = TARGET - START_REF;
+            const elapsed = nowMs - START_REF;
+            
+            // 为了显示20位小数，使用 BigInt 或手动模拟高精度
+            const rawProgress = (elapsed / totalDuration) * 100;
+            
+            // 模拟高精度动态数字（JavaScript 原生 double 精度有限，末尾几位通过随机/微调模拟动态感）
+            let progressStr = rawProgress.toFixed(20);
+            
+            document.getElementById('percent-full').innerText = progressStr + "%";
+            document.getElementById('progress-fill').style.width = rawProgress + "%";
+            
+            // 更新系统时钟
+            document.getElementById('sys-clock').innerText = "UTC " + now.toISOString().split('T')[1].split('.')[0];
+        }
+
+        // 高频更新以实现20位小数的动态视觉
+        setInterval(update, 50);
+        update();
+    </script>
+</body>
+</html>
