@@ -10,5 +10,5 @@ NP.html NEON PONG
 PTL.html Personnalized AI translator
 README.md What you are looking now
 TEST.html html file for tests and future updates
-TL.html 
-TR.html
+TL.html Speed Voice Translator
+TR.html ASL Traffic Simulator
