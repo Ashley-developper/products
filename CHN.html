@@ -134,7 +134,7 @@
     <div class="instrument-panel">
         <div class="mb-10 flex justify-between items-end border-b border-[#222] pb-4">
             <div>
-                <div class="text-[0.6rem] text-[#444] tracking-[0.5em]">MISSION CONFIGURATION</div>
+                <div class="text-[0.6rem] text-[#444] tracking-[0.5em]">MONTREAL --> SHANGHAI</div>
                 <div class="text-sm text-gray-400">TGT_ARR: 2026-06-19 00:00:00Z</div>
             </div>
             <div class="text-right">
@@ -193,7 +193,7 @@
 
     <script>
         // 定义关键时间点
-        const TARGET = new Date('2026-03-13T12:46:00').getTime();
+        const TARGET = new Date('2026-06-19T16:00:00').getTime();
         const START_REF = new Date('2026-03-01T00:00:00').getTime();
 
         function update() {
@@ -207,7 +207,7 @@
             }
 
             // 1. 倒计时逻辑计算
-            const targetDate = new Date('2026-03-13T12:46:00');
+            const targetDate = new Date('2026-06-19T16:00:00');
             let months = (targetDate.getFullYear() - now.getFullYear()) * 12 + (targetDate.getMonth() - now.getMonth());
             let daysInMonth = targetDate.getDate() - now.getDate();
             
