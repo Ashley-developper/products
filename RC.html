@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>猎鹰九号 RTLS ｜ 音效+爆炸+敏捷RCS (增强音效解锁)</title>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap');
+        
+        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; background: #000; font-family: 'Inter', sans-serif; user-select: none; }
+        #renderCanvas { width: 100%; height: 100%; touch-action: none; outline: none; display: block; }
+        
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; color: #fff; }
+        
+        .telemetry-panel {
+            position: absolute; background: rgba(8, 12, 18, 0.7);
+            padding: 20px 22px; border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px); box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border-radius: 4px;
+        }
+        #left-panel { top: 30px; left: 30px; width: 250px; border-left: 4px solid #00f0ff; }
+        #right-panel { top: 30px; right: 30px; width: 250px; text-align: right; border-right: 4px solid #ff3366; }
+        #center-top { top: 30px; left: 50%; transform: translateX(-50%); text-align: center; border-bottom: 4px solid #ffffff; padding: 16px 32px; }
+        
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
+        .data-label { font-size: 11px; text-transform: uppercase; color: #9aa; letter-spacing: 1.5px; font-weight: 500; }
+        .data-value { font-family: 'Roboto Mono', monospace; font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 8px rgba(255,255,255,0.3); }
+        
+        #ap-status { font-family: 'Roboto Mono', monospace; font-size: 22px; font-weight: 900; color: #ff3366; letter-spacing: 2px; text-shadow: 0 0 10px currentColor; }
+        
+        #throttle-container {
+            position: absolute; left: 40px; top: 50%; transform: translateY(-50%);
+            width: 8px; height: 320px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
+            box-shadow: 0 0 15px rgba(0,0,0,0.6);
+        }
+        #throttle-fill { width: 100%; height: 0%; position: absolute; bottom: 0; background: linear-gradient(0deg, #ff3300, #ffaa00, #ffffff); transition: height 0.03s linear; box-shadow: 0 0 20px #ffaa00; }
+
+        #fuel-meter { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 460px; background: rgba(0,0,0,0.5); padding: 12px 20px; border-radius: 40px; backdrop-filter: blur(4px); border: 1px solid #333; }
+        .fuel-label { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; letter-spacing: 2px; }
+        .progress-outer { width: 100%; height: 6px; background: rgba(255,255,255,0.1); margin-top: 6px; border-radius: 3px; overflow: hidden;}
+        .progress-inner { height: 100%; width: 100%; background: linear-gradient(90deg, #00f0ff, #3a86ff); transition: width 0.08s linear; border-radius: 3px; }
+
+        .key-hint { position: absolute; bottom: 30px; left: 30px; font-size: 12px; color: #aaa; line-height: 2; font-family: 'Roboto Mono'; background: rgba(0,0,0,0.4); padding: 14px 20px; border-radius: 12px; backdrop-filter: blur(4px); border: 1px solid #2a2a2a; }
+        .key-hint span { color: #fff; background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 6px; margin-right: 6px; border: 1px solid #4f4f4f; }
+
+        #overlay {
+            position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, #1a1a2e, #000000);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
+            transition: opacity 0.8s;
+        }
+        .title { font-weight: 900; font-size: 56px; color: #fff; letter-spacing: 22px; margin-bottom: 10px; text-shadow: 0 0 30px #00a6ff; }
+        .subtitle { font-family: 'Roboto Mono'; font-size: 16px; color: #00f0ff; letter-spacing: 6px; margin-bottom: 60px; opacity: 0.8; }
+        .start-btn { 
+            padding: 18px 70px; background: transparent; color: #fff; border: 2px solid #fff; 
+            font-weight: 700; font-size: 18px; letter-spacing: 6px; cursor: pointer; transition: 0.2s;
+            backdrop-filter: blur(8px);
+        }
+        .start-btn:hover { background: #fff; color: #000; box-shadow: 0 0 40px #fff; border-color: #fff; }
+        .hidden { display: none !important; }
+        #loader { position:absolute; inset:0; background:#000; display:flex; justify-content:center; align-items:center; color:#fff; z-index:999; font-family:'Roboto Mono'; font-size:20px; letter-spacing:3px; }
+        #explosion-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; color: #ff5500; text-shadow: 0 0 30px red; z-index: 200; display: none; font-weight: 900; }
+    </style>
+</head>
+<body>
+    <div id="loader">启动推进剂灌注 & 编译着色器...</div>
+    <canvas id="renderCanvas"></canvas>
+    <div id="explosion-message">💥 火箭解体 💥</div>
+
+    <div id="hud" class="hidden">
+        <div class="telemetry-panel" id="center-top">
+            <div class="data-label" style="font-size:14px;">⚡ 自动驾驶状态 ⚡</div>
+            <div id="ap-status">手动模式</div>
+        </div>
+
+        <div class="telemetry-panel" id="left-panel">
+            <div class="data-row"><span class="data-label">高度 MSL</span><span class="data-value" id="ui-alt">0.00 km</span></div>
+            <div class="data-row"><span class="data-label">地速</span><span class="data-value" id="ui-vel">0.0 m/s</span></div>
+            <div class="data-row"><span class="data-label">垂直速度</span><span class="data-value" id="ui-vvel">0.0 m/s</span></div>
+            <div class="data-row"><span class="data-label">马赫数</span><span class="data-value" id="ui-mach">0.00</span></div>
+            <div class="data-row"><span class="data-label">轴向过载</span><span class="data-value" id="ui-gforce">1.00 G</span></div>
+        </div>
+
+        <div class="telemetry-panel" id="right-panel">
+            <div class="data-row"><span class="data-label">视角目标</span><span class="data-value" id="ui-cam">一子级 (B1)</span></div>
+            <div class="data-row"><span class="data-label">动压 Q</span><span class="data-value" id="ui-q">0.0 kPa</span></div>
+            <div class="data-row"><span class="data-label">推重比 TWR</span><span class="data-value" id="ui-twr">0.00</span></div>
+            <div class="data-row"><span class="data-label">当前质量</span><span class="data-value" id="ui-mass">--- kg</span></div>
+            <div class="data-row"><span class="data-label">推力</span><span class="data-value" id="ui-thrust">0 kN</span></div>
+        </div>
+
+        <div id="throttle-container"><div id="throttle-fill"></div></div>
+        
+        <div id="fuel-meter">
+            <div class="fuel-label"><span>🚀 推进剂剩余</span><span id="fuel-percent">100%</span></div>
+            <div class="progress-outer"><div id="fuel-fill" class="progress-inner"></div></div>
+        </div>
+
+        <div class="key-hint">
+            <span>P</span> 自动驾驶/手动<br>
+            <span>C</span> 切换视角 (一子级/二子级)<br>
+            <span>L</span> 展开/收起着陆腿<br>
+            <span>空格</span> 级间分离<br>
+            <span>WASD</span> 姿态控制 (RCS 敏捷)<br>
+            <span>Shift/Ctrl</span> 油门 +/-<br>
+            <span style="background:#00aaff30;">🎧 音效已解锁｜爆炸｜地球曲率</span>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div class="title">FALCON 9</div>
+        <div class="subtitle">RETURN TO LAUNCH SITE</div>
+        <button class="start-btn" onclick="startGame()">启动任务</button>
+    </div>
+
+    <script>
+        (async function() {
+            // ================== 配置与常量 ==================
+            const canvas = document.getElementById("renderCanvas");
+            let engine, scene, havokInstance;
+            let booster, stage2, boosterAgg, stage2Agg, engineBell;
+            let exhaustMain, exhaustSmall, rcsParticles;
+            let camera, pipeline, sunLight, shadowGenerator, flameLight;
+            let legs = [], gridFins = [];
+            let landingPadMesh, launchPadMesh, launchTower, earthSphere;
+            
+            // 新增: 星空粒子, 云层, 建筑群
+            let starParticles, highCloudParticles, trees = [], buildings = [];
+            
+            // 音效
+            let engineSound, explosionSound, separationSound, touchdownSound;
+            let isExploded = false;
+            
+            // 质量与推进 (更真实的分级)
+            const DRY_MASS_BOOSTER = 25600;       // 包含9台发动机 + 结构
+            const FUEL_MASS_BOOSTER = 395000;      // RP-1/LOX
+            const DRY_MASS_STAGE2 = 4500;           // 真空版MVac
+            const FUEL_MASS_STAGE2 = 107000;
+
+            const MAX_THRUST_MAIN_VAC = 8220000;    // 9台MVac真空推力
+            const MAX_THRUST_MAIN_SL = 7600000;     // 海平面 (修正)
+            const MAX_THRUST_STAGE2 = 981000;       // MVac D
+
+            const BURN_RATE_BOOSTER = 2550;          // kg/s @ 100%
+            const BURN_RATE_STAGE2 = 310;            // kg/s
+
+            const GRAVITY = -9.80665;
+            const ROCKET_AREA = Math.PI * 1.85 * 1.85; // 参考面积
+
+            // 状态变量
+            let throttle = 0;                // 0-100
+            let currentFuelBooster = FUEL_MASS_BOOSTER;
+            let currentFuelStage2 = FUEL_MASS_STAGE2;
+            let isSeparated = false;
+            let gearDeployed = false;          // 着陆腿状态
+            let isGameActive = false;
+            let autopilotEnabled = false;
+            let apState = "IDLE";
+            let apTimer = -1;                   // 高性能时间标记
+            let lastSeparationTime = 0;
+            const targetLZ = new BABYLON.Vector3(0, 0.5, 800); // 着陆区坐标
+            
+            // 输入 & UI
+            const inputMap = {};
+            let cameraTargetMode = 'booster';     // 'booster' 或 'stage2'
+            let uiElements = {};
+            let lastUiUpdateTime = 0;
+            
+            // 向量复用池 (性能优化)
+            const tmpVec3 = [BABYLON.Vector3.Zero(), BABYLON.Vector3.Zero(), BABYLON.Vector3.Zero(), BABYLON.Vector3.Zero()];
+            const tmpQuat = new BABYLON.Quaternion();
+
+            // 气动系数 (马赫数分段)
+            function getDragCoefficient(mach) {
+                if (mach < 0.8) return 0.35;
+                if (mach < 1.1) return 0.45;   // 跨音速区
+                if (mach < 3.0) return 0.38;
+                return 0.30;
+            }
+
+            // ================== 初始化引擎 & 场景 ==================
+            try {
+                const hkWasm = await HavokPhysics();
+                havokInstance = new BABYLON.HavokPlugin(false, hkWasm);
+                engine = new BABYLON.Engine(canvas, true, { stencil: true, disableWebGL2Support: false });
+                scene = new BABYLON.Scene(engine);
+                scene.enablePhysics(new BABYLON.Vector3(0, GRAVITY, 0), havokInstance);
+                
+                // 环境贴图 (增强光影)
+                scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
+                    "https://assets.babylonjs.com/environments/studio.env", scene
+                );
+                scene.environmentIntensity = 0.5;
+                scene.clearColor = new BABYLON.Color4(0.02, 0.03, 0.06, 1.0);
+
+                // 缓存UI
+                uiElements = {
+                    alt: document.getElementById("ui-alt"),
+                    vel: document.getElementById("ui-vel"),
+                    vvel: document.getElementById("ui-vvel"),
+                    mach: document.getElementById("ui-mach"),
+                    gforce: document.getElementById("ui-gforce"),
+                    q: document.getElementById("ui-q"),
+                    twr: document.getElementById("ui-twr"),
+                    mass: document.getElementById("ui-mass"),
+                    thrust: document.getElementById("ui-thrust"),
+                    apStatus: document.getElementById("ap-status"),
+                    cam: document.getElementById("ui-cam"),
+                    throttleFill: document.getElementById("throttle-fill"),
+                    fuelFill: document.getElementById("fuel-fill"),
+                    fuelPercent: document.getElementById("fuel-percent")
+                };
+
+                document.getElementById("loader").style.display = "none";
+                
+                // 构建世界
+                await setupEnvironment(scene);
+                setupRocket(scene);
+                setupCamera(scene);
+                setupPostProcess(scene);
+                setupCloudsAndStars(scene); // 增强地景：星空 + 双层云
+                setupBuildingsAndTrees(scene); // 新增：建筑和树木
+                setupLaunchPadDetails(scene); // 新增：发射台细节
+                setupSounds(scene); // 初始化音效
+
+                // 渲染循环
+                engine.runRenderLoop(() => {
+                    if (scene) {
+                        scene.render();
+                        if (isGameActive && !isExploded) flightDynamicsLoop();
+                        updateCameraAndAtmosphere();
+                    }
+                });
+
+                window.addEventListener("resize", () => engine.resize());
+
+                // 键盘事件 (带preventDefault)
+                scene.onKeyboardObservable.add((kbInfo) => {
+                    const ev = kbInfo.event;
+                    const key = ev.code;
+                    if (kbInfo.type === BABYLON.KeyboardEventTypes.KEYDOWN) {
+                        if (!ev.repeat) {
+                            inputMap[key] = true;
+                            // 防止页面滚动/快捷键
+                            if (["Space", "KeyP", "KeyC", "KeyL", "KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ControlLeft"].includes(key)) {
+                                ev.preventDefault();
+                            }
+                            if (key === 'KeyL' && !ev.repeat) toggleGears();
+                            if (key === 'Space' && !ev.repeat && !isSeparated) separateStage();
+                            if (key === 'KeyP' && !ev.repeat) toggleAutopilot();
+                            if (key === 'KeyC' && !ev.repeat) switchCamera();
+                        }
+                    } else if (kbInfo.type === BABYLON.KeyboardEventTypes.KEYUP) {
+                        inputMap[key] = false;
+                        ev.preventDefault();
+                    }
+                });
+
+                // 隐藏加载界面
+            } catch (err) {
+                console.error("初始化失败:", err);
+                document.getElementById("loader").innerText = "加载失败，请刷新页面";
+            }
+
+            // ================== 环境与地景 (地球曲率+细节) ==================
+            async function setupEnvironment(scene) {
+                // 创建地球球体 (半径50000，中心在 (0, -50000, 0) 使表面在 y=0 附近)
+                earthSphere = BABYLON.MeshBuilder.CreateSphere("earth", { diameter: 100000 }, scene);
+                earthSphere.position.y = -50000;
+                const earthMat = new BABYLON.PBRMaterial("earthMat", scene);
+                earthMat.albedoTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/earth.jpg", scene);
+                earthMat.roughness = 0.6;
+                earthMat.metallic = 0.1;
+                earthSphere.material = earthMat;
+                earthSphere.receiveShadows = true;
+                earthSphere.isPickable = false;
+
+                // 平面地面 (作为碰撞体，放在球体表面，稍微抬高避免穿模)
+                const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 60000, height: 60000}, scene);
+                const gMat = new BABYLON.PBRMaterial("gMat", scene);
+                gMat.albedoColor = new BABYLON.Color3(0.15, 0.13, 0.1);
+                gMat.roughness = 0.9;
+                gMat.metallic = 0.0;
+                ground.material = gMat;
+                ground.receiveShadows = true;
+                ground.position.y = 1.0; // 稍微抬高，避免与地球球体穿插过于明显
+                const groundAgg = new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX, { mass: 0, friction: 0.6 }, scene);
+
+                // 发射台基座 (之前已定义，稍后会在setupLaunchPadDetails中细化)
+                launchPadMesh = BABYLON.MeshBuilder.CreateCylinder("launchPadBase", {height: 6, diameter: 30}, scene);
+                launchPadMesh.position.y = 3;
+                const padMat = new BABYLON.PBRMaterial("padMat", scene);
+                padMat.albedoColor = new BABYLON.Color3(0.25, 0.25, 0.27);
+                padMat.roughness = 0.65;
+                padMat.metallic = 0.3;
+                launchPadMesh.material = padMat;
+                launchPadMesh.receiveShadows = true;
+                new BABYLON.PhysicsAggregate(launchPadMesh, BABYLON.PhysicsShapeType.CYLINDER, { mass: 0, friction: 0.8 }, scene);
+
+                // 着陆区 (混凝土平台)
+                landingPadMesh = BABYLON.MeshBuilder.CreateCylinder("landingPad", {height: 1.5, diameter: 100}, scene);
+                landingPadMesh.position.copyFrom(targetLZ);
+                landingPadMesh.position.y = 0.75;
+                const lzMat = new BABYLON.PBRMaterial("lzMat", scene);
+                lzMat.albedoColor = new BABYLON.Color3(0.45, 0.42, 0.4);
+                lzMat.roughness = 0.7;
+                lzMat.metallic = 0.1;
+                landingPadMesh.material = lzMat;
+                landingPadMesh.receiveShadows = true;
+                new BABYLON.PhysicsAggregate(landingPadMesh, BABYLON.PhysicsShapeType.CYLINDER, { mass: 0, friction: 0.9 }, scene);
+
+                // 主光源 (太阳)
+                sunLight = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-0.5, -1, 0.3), scene);
+                sunLight.intensity = 5.5;
+                sunLight.shadowMinZ = 10;
+                sunLight.shadowMaxZ = 30000;
+                shadowGenerator = new BABYLON.ShadowGenerator(4096, sunLight);
+                shadowGenerator.useBlurExponentialShadowMap = true;
+                shadowGenerator.blurKernel = 32;
+                shadowGenerator.setDarkness(0.3);
+                
+                // 半球光 (环境照明)
+                const hemiLight = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
+                hemiLight.diffuse = new BABYLON.Color3(0.25, 0.3, 0.35);
+                hemiLight.groundColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+                hemiLight.specular = new BABYLON.Color3(0.1, 0.1, 0.1);
+                
+                // 点光源模拟火焰 (动态跟随)
+                flameLight = new BABYLON.PointLight("flameLight", BABYLON.Vector3.Zero(), scene);
+                flameLight.intensity = 0;
+                flameLight.diffuse = new BABYLON.Color3(1, 0.5, 0.2);
+                flameLight.range = 400;
+
+                // 雾效 (高度雾，随高度变化)
+                scene.fogEnabled = true;
+                scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+                scene.fogDensity = 0.000015;
+                scene.fogColor = new BABYLON.Color3(0.7, 0.75, 0.9);
+            }
+
+            // 增强的星空和云层
+            function setupCloudsAndStars(scene) {
+                // 星空粒子 (远处背景)
+                starParticles = new BABYLON.ParticleSystem("stars", 3000, scene);
+                starParticles.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", scene);
+                starParticles.emitter = BABYLON.Vector3.Zero();
+                starParticles.minEmitBox = new BABYLON.Vector3(-40000, -10000, -40000);
+                starParticles.maxEmitBox = new BABYLON.Vector3(40000, 40000, 40000);
+                starParticles.color1 = new BABYLON.Color4(1, 1, 1, 1);
+                starParticles.color2 = new BABYLON.Color4(0.8, 0.8, 1, 1);
+                starParticles.minSize = 3.0;
+                starParticles.maxSize = 8.0;
+                starParticles.minLifeTime = 1e9;
+                starParticles.emitRate = 3000;
+                starParticles.gravity = BABYLON.Vector3.Zero();
+                starParticles.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+                starParticles.start();
+
+                // 低空云
+                const lowClouds = new BABYLON.ParticleSystem("lowClouds", 1500, scene);
+                lowClouds.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/cloud.png", scene);
+                lowClouds.emitter = new BABYLON.Vector3(0, 2500, 0);
+                lowClouds.minEmitBox = new BABYLON.Vector3(-12000, 0, -12000);
+                lowClouds.maxEmitBox = new BABYLON.Vector3(12000, 500, 12000);
+                lowClouds.color1 = new BABYLON.Color4(0.9, 0.9, 1.0, 0.35);
+                lowClouds.color2 = new BABYLON.Color4(1.0, 1.0, 1.0, 0.4);
+                lowClouds.minSize = 600;
+                lowClouds.maxSize = 1800;
+                lowClouds.minLifeTime = 1200;
+                lowClouds.emitRate = 70;
+                lowClouds.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+                lowClouds.gravity = BABYLON.Vector3.Zero();
+                lowClouds.start();
+
+                // 高空卷云
+                highCloudParticles = new BABYLON.ParticleSystem("highClouds", 1000, scene);
+                highCloudParticles.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/cloud.png", scene);
+                highCloudParticles.emitter = new BABYLON.Vector3(0, 9000, 0);
+                highCloudParticles.minEmitBox = new BABYLON.Vector3(-18000, 0, -18000);
+                highCloudParticles.maxEmitBox = new BABYLON.Vector3(18000, 4000, 18000);
+                highCloudParticles.color1 = new BABYLON.Color4(1, 1, 1, 0.2);
+                highCloudParticles.color2 = new BABYLON.Color4(1, 1, 1, 0.25);
+                highCloudParticles.minSize = 1000;
+                highCloudParticles.maxSize = 2500;
+                highCloudParticles.minLifeTime = 1500;
+                highCloudParticles.emitRate = 40;
+                highCloudParticles.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+                highCloudParticles.gravity = BABYLON.Vector3.Zero();
+                highCloudParticles.start();
+            }
+
+            // 新增：发射台细节 (塔架、支柱等)
+            function setupLaunchPadDetails(scene) {
+                // 发射塔 (简单结构)
+                launchTower = new BABYLON.MeshBuilder.CreateBox("towerBase", {width: 4, height: 40, depth: 4}, scene);
+                launchTower.position.set(10, 20, 5);
+                const towerMat = new BABYLON.PBRMaterial("towerMat", scene);
+                towerMat.albedoColor = new BABYLON.Color3(0.6, 0.6, 0.65);
+                towerMat.roughness = 0.4;
+                towerMat.metallic = 0.5;
+                launchTower.material = towerMat;
+                launchTower.receiveShadows = true;
+
+                // 塔顶结构
+                const towerTop = BABYLON.MeshBuilder.CreateCylinder("towerTop", {height: 5, diameter: 6}, scene);
+                towerTop.position.set(10, 42, 5);
+                towerTop.material = towerMat;
+                towerTop.receiveShadows = true;
+
+                // 支柱
+                for (let i = -1; i <= 1; i+=2) {
+                    for (let j = -1; j <= 1; j+=2) {
+                        const pillar = BABYLON.MeshBuilder.CreateCylinder("pillar", {height: 20, diameter: 2}, scene);
+                        pillar.position.set(i*8, 10, j*8);
+                        const pillarMat = new BABYLON.PBRMaterial("pillarMat", scene);
+                        pillarMat.albedoColor = new BABYLON.Color3(0.5, 0.5, 0.55);
+                        pillarMat.roughness = 0.3;
+                        pillar.material = pillarMat;
+                        pillar.receiveShadows = true;
+                    }
+                }
+            }
+
+            // 新增：树木和建筑群 (随机放置)
+            function setupBuildingsAndTrees(scene) {
+                // 随机树 (简单圆锥+圆柱)
+                for (let i = 0; i < 60; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 200 + Math.random() * 800;
+                    const x = Math.cos(angle) * dist;
+                    const z = Math.sin(angle) * dist;
+                    
+                    // 树干
+                    const trunk = BABYLON.MeshBuilder.CreateCylinder("trunk", {height: 8, diameter: 1.5}, scene);
+                    trunk.position.set(x, 4, z);
+                    const trunkMat = new BABYLON.PBRMaterial("trunkMat", scene);
+                    trunkMat.albedoColor = new BABYLON.Color3(0.4, 0.25, 0.15);
+                    trunk.material = trunkMat;
+                    trunk.receiveShadows = true;
+                    
+                    // 树叶 (两个绿色球体)
+                    const leafMat = new BABYLON.PBRMaterial("leafMat", scene);
+                    leafMat.albedoColor = new BABYLON.Color3(0.2, 0.6, 0.2);
+                    for (let j = 0; j < 3; j++) {
+                        const leaf = BABYLON.MeshBuilder.CreateSphere("leaf", {diameter: 3}, scene);
+                        leaf.position.set(x + (j-1)*1.5, 8 + j*2, z);
+                        leaf.material = leafMat;
+                        leaf.receiveShadows = true;
+                    }
+                }
+
+                // 随机建筑 (立方体组合)
+                for (let i = 0; i < 30; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 400 + Math.random() * 1500;
+                    const x = Math.cos(angle) * dist;
+                    const z = Math.sin(angle) * dist;
+                    
+                    const height = 10 + Math.random() * 30;
+                    const width = 8 + Math.random() * 15;
+                    const depth = 8 + Math.random() * 15;
+                    
+                    const building = BABYLON.MeshBuilder.CreateBox("building", {width, height, depth}, scene);
+                    building.position.set(x, height/2, z);
+                    const buildingMat = new BABYLON.PBRMaterial("buildingMat", scene);
+                    buildingMat.albedoColor = new BABYLON.Color3(0.5 + Math.random()*0.3, 0.5 + Math.random()*0.3, 0.5 + Math.random()*0.3);
+                    buildingMat.roughness = 0.6;
+                    building.material = buildingMat;
+                    building.receiveShadows = true;
+                }
+            }
+
+            // 音效初始化
+            function setupSounds(scene) {
+                // 使用Babylon.js的Sound类，需要用户交互后播放，因此先加载但不自动播放
+                engineSound = new BABYLON.Sound("engine", "https://playground.babylonjs.com/sounds/rocket_engine.mp3", scene, null, { loop: true, autoplay: false, volume: 0.5 });
+                explosionSound = new BABYLON.Sound("explosion", "https://playground.babylonjs.com/sounds/explosion.mp3", scene, null, { loop: false, autoplay: false, volume: 0.8 });
+                separationSound = new BABYLON.Sound("separation", "https://playground.babylonjs.com/sounds/separation.mp3", scene, null, { loop: false, autoplay: false, volume: 0.7 });
+                touchdownSound = new BABYLON.Sound("touchdown", "https://playground.babylonjs.com/sounds/touchdown.mp3", scene, null, { loop: false, autoplay: false, volume: 0.6 });
+            }
+
+            // ================== 火箭模型 (精细) ==================
+            function setupRocket(scene) {
+                const bodyMat = new BABYLON.PBRMaterial("bodyMat", scene);
+                bodyMat.albedoColor = new BABYLON.Color3(0.96, 0.96, 0.98);
+                bodyMat.roughness = 0.35;
+                bodyMat.metallic = 0.0;
+                const blackMat = new BABYLON.PBRMaterial("blackMat", scene);
+                blackMat.albedoColor = new BABYLON.Color3(0.08, 0.08, 0.1);
+                blackMat.roughness = 0.5;
+                blackMat.metallic = 0.7;
+
+                // 一级
+                booster = BABYLON.MeshBuilder.CreateCylinder("booster", {height: 44, diameter: 3.7}, scene);
+                booster.position.y = 26; 
+                booster.material = bodyMat;
+                booster.receiveShadows = true;
+
+                engineBell = BABYLON.MeshBuilder.CreateCylinder("bell", {height: 2.8, diameterTop: 3.7, diameterBottom: 5.2}, scene);
+                engineBell.parent = booster; 
+                engineBell.position.y = -23; 
+                engineBell.material = blackMat;
+
+                // 着陆腿 (4支)
+                for(let i=0; i<4; i++) {
+                    const angle = (Math.PI / 2) * i + Math.PI/4;
+                    const legRoot = new BABYLON.TransformNode("legRoot"+i, scene);
+                    legRoot.parent = booster; 
+                    legRoot.position = new BABYLON.Vector3(Math.cos(angle)*2.0, -21, Math.sin(angle)*2.0);
+                    legRoot.rotation.y = -angle;
+                    
+                    const legMain = BABYLON.MeshBuilder.CreateBox("leg"+i, {width: 0.5, height: 9, depth: 0.5}, scene);
+                    legMain.parent = legRoot;
+                    legMain.position.y = -3.5;
+                    legMain.material = blackMat;
+                    
+                    const foot = BABYLON.MeshBuilder.CreateCylinder("foot"+i, {height: 0.6, diameter: 1.2}, scene);
+                    foot.parent = legRoot;
+                    foot.position.y = -8;
+                    foot.material = blackMat;
+                    
+                    legs.push({root: legRoot, main: legMain, foot: foot, angle: 0});
+                }
+
+                // 栅格翼
+                for(let i=0; i<4; i++) {
+                    const angle = (Math.PI / 2) * i;
+                    const finRoot = new BABYLON.TransformNode("finRoot"+i, scene);
+                    finRoot.parent = booster; 
+                    finRoot.position = new BABYLON.Vector3(Math.cos(angle)*2.1, 18, Math.sin(angle)*2.1);
+                    finRoot.rotation.y = -angle;
+                    
+                    const fin = BABYLON.MeshBuilder.CreateBox("fin"+i, {width: 0.2, height: 2.8, depth: 1.5}, scene);
+                    fin.parent = finRoot;
+                    fin.position.y = 1.2;
+                    fin.rotation.z = Math.PI/2;
+                    fin.material = blackMat;
+                    gridFins.push(fin);
+                }
+
+                // 二级
+                stage2 = BABYLON.MeshBuilder.CreateCylinder("stage2", {height: 18, diameter: 3.7}, scene);
+                stage2.position.y = 37; 
+                stage2.parent = booster; 
+                stage2.material = bodyMat;
+                stage2.receiveShadows = true;
+
+                // 头部整流罩
+                const nose = BABYLON.MeshBuilder.CreateCylinder("nose", {height: 4, diameterTop: 0, diameterBottom: 3.7}, scene);
+                nose.parent = stage2; 
+                nose.position.y = 11; 
+                nose.material = bodyMat;
+
+                const initialTotalMass = DRY_MASS_BOOSTER + FUEL_MASS_BOOSTER + DRY_MASS_STAGE2 + FUEL_MASS_STAGE2;
+                boosterAgg = new BABYLON.PhysicsAggregate(booster, BABYLON.PhysicsShapeType.CAPSULE, { mass: initialTotalMass, friction: 0.3, restitution: 0.1 }, scene);
+                boosterAgg.body.setAngularDamping(0.6);
+
+                // 粒子系统
+                exhaustMain = createExhaust(engineBell, new BABYLON.Vector3(0, -2.2, 0), true);
+                exhaustSmall = createExhaust(stage2, new BABYLON.Vector3(0, -9.5, 0), false);
+                rcsParticles = createRCS(booster);
+            }
+
+            function createExhaust(emitter, offset, isMain) {
+                const ps = new BABYLON.ParticleSystem("exhaust", isMain ? 6000 : 2000, scene);
+                ps.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", scene);
+                ps.emitter = emitter; 
+                ps.minEmitBox = offset; 
+                ps.maxEmitBox = offset;
+                ps.color1 = new BABYLON.Color4(1.0, 0.7, 0.3, 1.0);
+                ps.color2 = new BABYLON.Color4(1.0, 1.0, 0.8, 1.0);
+                ps.colorDead = new BABYLON.Color4(0.2, 0.2, 0.2, 0.0);
+                ps.minSize = isMain ? 4 : 2.5;
+                ps.maxSize = isMain ? 12 : 6;
+                ps.minLifeTime = 0.05;
+                ps.maxLifeTime = 0.2;
+                ps.emitRate = 0;
+                ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+                ps.start();
+                return ps;
+            }
+
+            function createRCS(emitter) {
+                const ps = new BABYLON.ParticleSystem("rcs", 600, scene);
+                ps.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", scene);
+                ps.emitter = emitter;
+                ps.minEmitBox = new BABYLON.Vector3(-2, 10, -2);
+                ps.maxEmitBox = new BABYLON.Vector3(2, 30, 2);
+                ps.color1 = new BABYLON.Color4(1, 1, 1, 0.7);
+                ps.emitRate = 0;
+                ps.minSize = 0.8;
+                ps.maxSize = 1.8;
+                ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+                ps.start();
+                return ps;
+            }
+
+            function setupCamera(scene) {
+                camera = new BABYLON.ArcRotateCamera("cam", -Math.PI/2, 1.2, 180, booster.position, scene);
+                camera.attachControl(canvas, true);
+                camera.lowerRadiusLimit = 40;
+                camera.upperRadiusLimit = 2000; // 增加最大距离以观察地球曲率
+                camera.wheelPrecision = 10;
+            }
+
+            function setupPostProcess(scene) {
+                pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [camera]);
+                pipeline.bloomEnabled = true;
+                pipeline.bloomThreshold = 0.6;
+                pipeline.bloomWeight = 0.4;
+                pipeline.bloomKernel = 64;
+                pipeline.bloomScale = 0.6;
+                pipeline.sharpenEnabled = false;
+                pipeline.chromaticAberrationEnabled = false;
+            }
+
+            // ================== 交互函数 ==================
+            function toggleGears() {
+                gearDeployed = !gearDeployed;
+                const targetAngle = gearDeployed ? Math.PI/2.8 : 0;
+                legs.forEach(leg => {
+                    BABYLON.Animation.CreateAndStartAnimation("legAnim", leg.root, "rotation.x", 30, 20, leg.root.rotation.x, targetAngle, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+                });
+            }
+
+            function switchCamera() {
+                // 修复相机切换：允许在分离后自由切换，但要确保目标存在
+                if (isSeparated) {
+                    // 两个目标都存在，可以切换
+                    cameraTargetMode = (cameraTargetMode === 'booster') ? 'stage2' : 'booster';
+                } else {
+                    // 未分离时只能看 booster
+                    cameraTargetMode = 'booster';
+                }
+                // 更新UI
+                uiElements.cam.textContent = cameraTargetMode === 'booster' ? "一子级 (B1)" : "二子级 (S2)";
+            }
+
+            function toggleAutopilot() {
+                autopilotEnabled = !autopilotEnabled;
+                uiElements.apStatus.style.color = autopilotEnabled ? "#00ffaa" : "#ff3366";
+                if (autopilotEnabled && apState === "IDLE") {
+                    apState = "LIFTOFF";
+                    uiElements.apStatus.textContent = "AP: 起飞";
+                } else if (!autopilotEnabled) {
+                    apState = "MANUAL";
+                    uiElements.apStatus.textContent = "手动模式";
+                }
+            }
+
+            function separateStage() {
+                if (isSeparated) return;
+                isSeparated = true;
+                lastSeparationTime = performance.now();
+                
+                // 获取当前速度
+                boosterAgg.body.getLinearVelocityToRef(tmpVec3[0]);
+                stage2.setParent(null);
+                
+                // 更新一级质量
+                boosterAgg.body.setMassProperties({ mass: DRY_MASS_BOOSTER + currentFuelBooster });
+                
+                // 创建二级物理
+                stage2Agg = new BABYLON.PhysicsAggregate(stage2, BABYLON.PhysicsShapeType.CAPSULE, { mass: DRY_MASS_STAGE2 + currentFuelStage2 }, scene);
+                stage2Agg.body.setLinearVelocity(tmpVec3[0]);
+                
+                // 分离脉冲
+                tmpVec3[0].scaleInPlace(1.05);
+                stage2Agg.body.setLinearVelocity(tmpVec3[0]);
+                
+                exhaustMain.stop();
+                // 自动切换相机到二级
+                cameraTargetMode = 'stage2';
+                uiElements.cam.textContent = "二子级 (S2)";
+                
+                // 播放分离音效
+                if (separationSound) separationSound.play();
+            }
+
+            // 爆炸解体效果
+            function explodeRocket() {
+                if (isExploded) return;
+                isExploded = true;
+                
+                // 隐藏火箭模型
+                booster.setEnabled(false);
+                if (stage2) stage2.setEnabled(false);
+                legs.forEach(l => l.root.setEnabled(false));
+                gridFins.forEach(f => f.setEnabled(false));
+                exhaustMain.stop();
+                exhaustSmall.stop();
+                rcsParticles.stop();
+                
+                // 创建爆炸粒子
+                const explosionParticles = new BABYLON.ParticleSystem("explosion", 5000, scene);
+                explosionParticles.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", scene);
+                explosionParticles.emitter = booster.position.clone();
+                explosionParticles.minEmitBox = new BABYLON.Vector3(-10, -10, -10);
+                explosionParticles.maxEmitBox = new BABYLON.Vector3(10, 10, 10);
+                explosionParticles.color1 = new BABYLON.Color4(1, 0.5, 0, 1);
+                explosionParticles.color2 = new BABYLON.Color4(1, 0, 0, 1);
+                explosionParticles.colorDead = new BABYLON.Color4(0, 0, 0, 0);
+                explosionParticles.minSize = 5;
+                explosionParticles.maxSize = 20;
+                explosionParticles.minLifeTime = 1;
+                explosionParticles.maxLifeTime = 3;
+                explosionParticles.emitRate = 5000;
+                explosionParticles.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+                explosionParticles.start();
+                
+                // 播放爆炸声
+                if (explosionSound) explosionSound.play();
+                
+                // 显示UI消息
+                document.getElementById("explosion-message").style.display = "block";
+                setTimeout(() => {
+                    document.getElementById("explosion-message").style.display = "none";
+                }, 3000);
+                
+                // 停止物理
+                if (boosterAgg) boosterAgg.dispose();
+                if (stage2Agg) stage2Agg.dispose();
+            }
+
+            // ================== 自动驾驶 (优化逻辑) ==================
+            function runAutopilot(alt, vel, dt) {
+                const now = performance.now();
+                const activeAgg = boosterAgg; // 自动驾驶只控制一级
+
+                switch(apState) {
+                    case "LIFTOFF":
+                        throttle = Math.min(100, throttle + 1.5);
+                        if (alt > 120) apState = "GRAVITY_TURN";
+                        break;
+                    case "GRAVITY_TURN":
+                        throttle = 100;
+                        if (alt > 400 && alt < 14000) {
+                            const pitch = 0.15 * (alt / 12000);
+                            tmpVec3[0].set(pitch, 0, 0);
+                            activeAgg.body.setAngularVelocity(tmpVec3[0]);
+                        }
+                        if (alt > 19000 || currentFuelBooster < FUEL_MASS_BOOSTER * 0.12) {
+                            apState = "MECO";
+                            uiElements.apStatus.textContent = "AP: 主机关机";
+                        }
+                        break;
+                    case "MECO":
+                        throttle = 0;
+                        if (apTimer < 0) {
+                            apTimer = now;
+                        } else if (now - apTimer > 1500) {
+                            separateStage();
+                            apState = "FLIP";
+                            apTimer = -1;
+                        }
+                        break;
+                    case "FLIP":
+                        rcsParticles.emitRate = 280;
+                        tmpVec3[0].set(0.55, 0, 0);
+                        activeAgg.body.setAngularVelocity(tmpVec3[0]);
+                        if (booster.up.y < -0.75) {
+                            rcsParticles.emitRate = 0;
+                            activeAgg.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                            apState = "BOOSTBACK";
+                            uiElements.apStatus.textContent = "AP: 返航点火";
+                        }
+                        break;
+                    case "BOOSTBACK":
+                        throttle = 100;
+                        activeAgg.body.getLinearVelocityToRef(tmpVec3[0]);
+                        if (tmpVec3[0].z > -15 && tmpVec3[0].x < 5) { 
+                            throttle = 0;
+                            apState = "DESCENT";
+                        }
+                        break;
+                    case "DESCENT":
+                        activeAgg.body.getLinearVelocityToRef(tmpVec3[0]);
+                        const vY = Math.abs(tmpVec3[0].y);
+                        const mass = DRY_MASS_BOOSTER + currentFuelBooster;
+                        const maxAccel = (MAX_THRUST_MAIN_SL / mass) - 9.81;
+                        const suicideAlt = (vY * vY) / (2 * maxAccel) + 180;
+                        if (alt < suicideAlt && tmpVec3[0].y < -10) {
+                            apState = "SUICIDE_BURN";
+                            toggleGears(); // 放腿
+                        }
+                        break;
+                    case "SUICIDE_BURN":
+                        activeAgg.body.getLinearVelocityToRef(tmpVec3[0]);
+                        const vy = -tmpVec3[0].y; // 下降速率正数
+                        const h = Math.max(alt - 18, 1);
+                        const reqDecel = (vy * vy) / (2 * h) + 1.5; // 需要减速度+安全余量
+                        const curMass = DRY_MASS_BOOSTER + currentFuelBooster;
+                        const availThrust = MAX_THRUST_MAIN_SL; 
+                        const maxDecel = availThrust / curMass - 9.81;
+                        throttle = BABYLON.Scalar.Clamp((reqDecel / maxDecel) * 100, 18, 100);
+                        // 姿态稳定
+                        tmpVec3[0].set(booster.up.z * -2.5, 0, booster.up.x * 2.5);
+                        activeAgg.body.setAngularVelocity(tmpVec3[0]);
+                        if (alt < 25 && vy < 3) {
+                            apState = "TOUCHDOWN";
+                        }
+                        break;
+                    case "TOUCHDOWN":
+                        throttle = 0;
+                        activeAgg.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                        uiElements.apStatus.textContent = "✅ 着陆成功";
+                        autopilotEnabled = false;
+                        if (touchdownSound) touchdownSound.play();
+                        break;
+                }
+            }
+
+            // ================== 主物理循环 ==================
+            function flightDynamicsLoop() {
+                const dt = Math.min(engine.getDeltaTime() / 1000, 0.05); // 限制步长
+                const isStage2Active = (isSeparated && cameraTargetMode === 'stage2' && stage2Agg);
+                const activeAgg = isStage2Active ? stage2Agg : boosterAgg;
+                const activeMesh = isStage2Active ? stage2 : booster;
+                if (!activeAgg || !activeMesh) return;
+
+                // 更新质量 (真实消耗)
+                let currentMass;
+                if (isStage2Active) {
+                    currentMass = DRY_MASS_STAGE2 + currentFuelStage2;
+                    if (currentFuelStage2 > 0) activeAgg.body.setMassProperties({ mass: currentMass });
+                } else {
+                    currentMass = DRY_MASS_BOOSTER + currentFuelBooster;
+                    if (!isSeparated) currentMass += DRY_MASS_STAGE2 + currentFuelStage2; // 未分离时总质量
+                    activeAgg.body.setMassProperties({ mass: currentMass });
+                }
+
+                // 高度、速度
+                const alt = activeMesh.position.y;
+                activeAgg.body.getLinearVelocityToRef(tmpVec3[0]);
+                const velMag = tmpVec3[0].length();
+                const mach = velMag / 340; // 简化音速
+
+                // 大气密度 (指数模型)
+                const atm = Math.exp(-Math.max(0, alt-10) / 7800);
+                
+                // 气动阻力 (更真实的系数)
+                if (velMag > 0.5) {
+                    const dragCoeff = getDragCoefficient(mach);
+                    const q = 0.5 * 1.225 * atm * velMag * velMag;
+                    const dragForce = q * dragCoeff * ROCKET_AREA;
+                    tmpVec3[0].normalizeToRef(tmpVec3[1]);
+                    tmpVec3[1].scaleInPlace(-dragForce);
+                    activeAgg.body.applyForce(tmpVec3[1], activeMesh.getAbsolutePosition());
+                    
+                    // 动压显示
+                    uiElements.q.textContent = (q / 1000).toFixed(2) + " kPa";
+                }
+
+                // 推力及燃料消耗
+                let actualThrust = 0;
+                let engineOn = false;
+                if (throttle > 0.1) {
+                    if (!isStage2Active && currentFuelBooster > 0) {
+                        const thrustSL = MAX_THRUST_MAIN_SL * (1 - atm * 0.15); // 海平面推力随高度变化
+                        const thrustVac = MAX_THRUST_MAIN_VAC;
+                        actualThrust = (throttle/100) * (thrustVac - (thrustVac - thrustSL) * atm);
+                        currentFuelBooster = Math.max(0, currentFuelBooster - (throttle/100) * BURN_RATE_BOOSTER * dt);
+                        booster.up.scaleToRef(actualThrust, tmpVec3[2]);
+                        boosterAgg.body.applyForce(tmpVec3[2], booster.getAbsolutePosition().subtract(booster.up.scale(18)));
+                        exhaustMain.emitRate = (throttle/100) * 10000;
+                        engineOn = true;
+                        
+                        // 发动机音效 (根据油门调整音量)
+                        if (engineSound && !engineSound.isPlaying) engineSound.play();
+                        if (engineSound) engineSound.setVolume(0.3 + 0.5 * (throttle/100));
+                    } else if (isStage2Active && currentFuelStage2 > 0) {
+                        actualThrust = (throttle/100) * MAX_THRUST_STAGE2;
+                        currentFuelStage2 = Math.max(0, currentFuelStage2 - (throttle/100) * BURN_RATE_STAGE2 * dt);
+                        stage2.up.scaleToRef(actualThrust, tmpVec3[2]);
+                        stage2Agg.body.applyForce(tmpVec3[2], stage2.getAbsolutePosition().subtract(stage2.up.scale(8)));
+                        exhaustSmall.emitRate = (throttle/100) * 5000;
+                        engineOn = true;
+                    }
+                }
+                
+                if (!engineOn) {
+                    exhaustMain.emitRate = 0;
+                    exhaustSmall.emitRate = 0;
+                    if (engineSound && engineSound.isPlaying) engineSound.stop();
+                }
+
+                // 动态火焰光
+                if (flameLight && engineOn) {
+                    flameLight.position.copyFrom(activeMesh.getAbsolutePosition());
+                    flameLight.intensity = 8 * (throttle/100) * (0.5 + 1.5 * atm);
+                } else if (flameLight) flameLight.intensity = 0;
+
+                // 手动姿态控制 (RCS 力矩) - 提升敏捷度
+                if (!autopilotEnabled && !isStage2Active) {
+                    let pitch = 0, yaw = 0;
+                    if (inputMap["KeyW"]) pitch = -1.2; // 原0.4 -> 1.2
+                    if (inputMap["KeyS"]) pitch = 1.2;
+                    if (inputMap["KeyA"]) yaw = -1.2;
+                    if (inputMap["KeyD"]) yaw = 1.2;
+                    if (Math.abs(pitch) + Math.abs(yaw) > 0) {
+                        rcsParticles.emitRate = 500; // 增加粒子
+                        // 施加扭矩 (简化但物理)
+                        tmpVec3[0].set(pitch * 8000000, yaw * 8000000, 0); // 力矩增大
+                        boosterAgg.body.applyForce(tmpVec3[0], booster.getAbsolutePosition().add(new BABYLON.Vector3(0, 10, 0)));
+                    } else {
+                        rcsParticles.emitRate = 0;
+                    }
+                } else {
+                    rcsParticles.emitRate = 0;
+                }
+
+                // 自动驾驶
+                if (autopilotEnabled && !isStage2Active) {
+                    runAutopilot(alt, velMag, dt);
+                } else {
+                    // 手动油门
+                    if (inputMap["ShiftLeft"]) throttle = Math.min(100, throttle + 2);
+                    if (inputMap["ControlLeft"]) throttle = Math.max(0, throttle - 2);
+                }
+
+                // 爆炸检测：速度过快撞击地面或倾斜角度过大
+                if (!isExploded) {
+                    // 检测与地面的撞击 (速度>20m/s 且高度<5)
+                    if (alt < 5 && velMag > 20) {
+                        explodeRocket();
+                    }
+                    // 检测倾斜角 (与垂直方向夹角超过70度)
+                    const upDir = activeMesh.up;
+                    const angleFromVertical = Math.acos(BABYLON.Vector3.Dot(upDir, BABYLON.Vector3.Up())) * 180 / Math.PI;
+                    if (angleFromVertical > 70 && velMag > 50) { // 高速下大倾角
+                        explodeRocket();
+                    }
+                }
+
+                // UI 更新 (60fps节流)
+                const now = performance.now();
+                if (now - lastUiUpdateTime > 60) {
+                    const gForce = 1 + Math.abs(actualThrust / (currentMass * 9.81) - 1) * 0.5; // 近似
+                    uiElements.alt.textContent = (Math.max(0, alt-10) / 1000).toFixed(2) + " km";
+                    uiElements.vel.textContent = velMag.toFixed(1) + " m/s";
+                    uiElements.vvel.textContent = tmpVec3[0].y.toFixed(1) + " m/s";
+                    uiElements.mach.textContent = mach.toFixed(2);
+                    uiElements.gforce.textContent = gForce.toFixed(2) + " G";
+                    uiElements.twr.textContent = (actualThrust / (currentMass * 9.81)).toFixed(2);
+                    uiElements.mass.textContent = Math.round(currentMass) + " kg";
+                    uiElements.thrust.textContent = Math.round(actualThrust / 1000) + " kN";
+                    
+                    uiElements.throttleFill.style.height = throttle + "%";
+                    let fuelPct = isStage2Active ? (currentFuelStage2/FUEL_MASS_STAGE2)*100 : (currentFuelBooster/FUEL_MASS_BOOSTER)*100;
+                    fuelPct = Math.max(0, fuelPct);
+                    uiElements.fuelFill.style.width = fuelPct + "%";
+                    uiElements.fuelPercent.innerText = Math.round(fuelPct) + "%";
+                    lastUiUpdateTime = now;
+                }
+            }
+
+            function updateCameraAndAtmosphere() {
+                if (!camera) return;
+                let targetMesh;
+                if (cameraTargetMode === 'stage2' && isSeparated && stage2) {
+                    targetMesh = stage2;
+                } else {
+                    targetMesh = booster; // 默认
+                }
+                if (targetMesh) {
+                    BABYLON.Vector3.LerpToRef(camera.target, targetMesh.position, 0.1, camera.target);
+                }
+                // 根据高度改变雾颜色和密度 (模拟大气散射)
+                const alt = camera.position.y;
+                const altFactor = BABYLON.Scalar.Clamp(alt / 30000, 0, 1);
+                scene.fogColor = BABYLON.Color3.Lerp(
+                    new BABYLON.Color3(0.7, 0.75, 0.9), 
+                    new BABYLON.Color3(0.02, 0.02, 0.05), 
+                    altFactor
+                );
+                scene.fogDensity = 0.000015 * (1 - altFactor * 0.9);
+                
+                if (sunLight) {
+                    sunLight.intensity = 5.5 * (1 - altFactor * 0.15);
+                }
+            }
+
+            // 启动游戏 (增强音效解锁)
+            window.startGame = function() {
+                // 解锁音频 (必须在用户手势中调用)
+                if (BABYLON.Engine.audioEngine) {
+                    BABYLON.Engine.audioEngine.unlock();
+                }
+                // 停止上一轮可能还在播放的音效
+                [engineSound, explosionSound, separationSound, touchdownSound].forEach(s => {
+                    if (s && s.isPlaying) s.stop();
+                });
+
+                document.getElementById('overlay').classList.add('hidden');
+                document.getElementById('hud').classList.remove('hidden');
+                isGameActive = true;
+                isExploded = false;
+                // 重置火箭位置
+                booster.position.set(0, 26, 0);
+                booster.rotation.set(0,0,0);
+                booster.setEnabled(true);
+                if (stage2) {
+                    stage2.setEnabled(true);
+                    stage2.parent = booster;
+                }
+                throttle = 0;
+                currentFuelBooster = FUEL_MASS_BOOSTER;
+                currentFuelStage2 = FUEL_MASS_STAGE2;
+                isSeparated = false;
+                apTimer = -1;
+                if (boosterAgg) boosterAgg.body.setMassProperties({ mass: DRY_MASS_BOOSTER+FUEL_MASS_BOOSTER+DRY_MASS_STAGE2+FUEL_MASS_STAGE2 });
+                apState = "IDLE";
+                autopilotEnabled = false;
+                uiElements.apStatus.textContent = "手动模式";
+                uiElements.apStatus.style.color = "#ff3366";
+                cameraTargetMode = 'booster';
+                uiElements.cam.textContent = "一子级 (B1)";
+                
+                // 隐藏爆炸消息
+                document.getElementById("explosion-message").style.display = "none";
+            };
+        })();
+    </script>
+</body>
+</html>
