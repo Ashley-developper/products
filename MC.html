@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Minecraft Clone</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: sans-serif; }
+        canvas { display: block; }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+            opacity: 0.8;
+        }
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="crosshair"></div>
+    <div id="info">
+        <b>点击屏幕开始</b><br>
+        WASD: 移动 | SPACE: 跳跃<br>
+        左键: 挖掘 | 右键: 放置 (草方块)
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
+
+        // --- 配置 ---
+        const WORLD_SIZE = 32;
+        const TERRAIN_HEIGHT = 12;
+        const PLAYER_HEIGHT = 1.8;
+        const PLAYER_RADIUS = 0.35; // 玩家碰撞半径
+        const simplex = new SimplexNoise();
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(WORLD_SIZE / 2, 25, WORLD_SIZE / 2);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50);
+        scene.add(dirLight);
+
+        // --- 纹理生成 ---
+        function createPixelTexture(baseColor, noiseColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 16; canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 16, 16);
+            for (let i = 0; i < 30; i++) {
+                ctx.fillStyle = noiseColor;
+                ctx.fillRect(Math.random()*16, Math.random()*16, 1, 1);
+            }
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(0, 15, 16, 1);
+            ctx.fillRect(15, 0, 1, 16);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.magFilter = THREE.NearestFilter;
+            return tex;
+        }
+
+        const materials = {
+            grass: new THREE.MeshStandardMaterial({ map: createPixelTexture('#5e9e3d', '#4d8a2e') }),
+            dirt: new THREE.MeshStandardMaterial({ map: createPixelTexture('#8b5a2b', '#6d4621') }),
+            stone: new THREE.MeshStandardMaterial({ map: createPixelTexture('#808080', '#696969') })
+        };
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        
+        // --- 物理与地图数据 ---
+        const worldBlocks = {}; 
+        const instMeshes = {
+            grass: new THREE.InstancedMesh(geometry, materials.grass, WORLD_SIZE * WORLD_SIZE),
+            dirt: new THREE.InstancedMesh(geometry, materials.dirt, WORLD_SIZE * WORLD_SIZE * 4),
+            stone: new THREE.InstancedMesh(geometry, materials.stone, WORLD_SIZE * WORLD_SIZE * TERRAIN_HEIGHT)
+        };
+
+        function updateWorldBlock(x, y, z, active) {
+            const ix = Math.round(x), iy = Math.round(y), iz = Math.round(z);
+            const key = `${ix},${iz}`;
+            if (!worldBlocks[key]) worldBlocks[key] = new Set();
+            if (active) worldBlocks[key].add(iy);
+            else worldBlocks[key].delete(iy);
+        }
+
+        // 检查特定坐标是否有方块
+        function isBlockAt(x, y, z) {
+            const ix = Math.round(x), iy = Math.round(y), iz = Math.round(z);
+            const key = `${ix},${iz}`;
+            return worldBlocks[key] && worldBlocks[key].has(iy);
+        }
+
+        function getTerrainHeight(x, y, z) {
+            const ix = Math.round(x), iz = Math.round(z);
+            const key = `${ix},${iz}`;
+            const ySet = worldBlocks[key];
+            if (!ySet || ySet.size === 0) return -1;
+            const currentY = Math.floor(y - PLAYER_HEIGHT + 0.5);
+            let highestBelow = -1;
+            for (let blockY of ySet) {
+                if (blockY <= currentY) highestBelow = Math.max(highestBelow, blockY);
+            }
+            return highestBelow !== -1 ? highestBelow + 0.5 : -1;
+        }
+
+        function generateTerrain() {
+            const matrix = new THREE.Matrix4();
+            let counters = { grass: 0, dirt: 0, stone: 0 };
+            for (let x = 0; x < WORLD_SIZE; x++) {
+                for (let z = 0; z < WORLD_SIZE; z++) {
+                    const noise = simplex.noise(x / 20, z / 20);
+                    const h = Math.floor((noise + 1) * TERRAIN_HEIGHT / 2) + 3;
+                    for (let y = 0; y < h; y++) {
+                        matrix.setPosition(x, y, z);
+                        let type = y === h - 1 ? 'grass' : (y > h - 4 ? 'dirt' : 'stone');
+                        instMeshes[type].setMatrixAt(counters[type]++, matrix);
+                        updateWorldBlock(x, y, z, true);
+                    }
+                }
+            }
+            Object.keys(instMeshes).forEach(k => { scene.add(instMeshes[k]); });
+        }
+        generateTerrain();
+
+        // --- 控制 ---
+        const controls = new PointerLockControls(camera, document.body);
+        document.body.addEventListener('click', () => controls.lock());
+
+        const moveState = { w: false, s: false, a: false, d: false };
+        const velocity = new THREE.Vector3();
+        let canJump = false;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') moveState.w = true;
+            if (e.code === 'KeyS') moveState.s = true;
+            if (e.code === 'KeyA') moveState.a = true;
+            if (e.code === 'KeyD') moveState.d = true;
+            if (e.code === 'Space' && canJump) { velocity.y = 0.15; canJump = false; }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') moveState.w = false;
+            if (e.code === 'KeyS') moveState.s = false;
+            if (e.code === 'KeyA') moveState.a = false;
+            if (e.code === 'KeyD') moveState.d = false;
+        });
+
+        // --- 交互 ---
+        const raycaster = new THREE.Raycaster();
+        window.addEventListener('mousedown', (e) => {
+            if (!controls.isLocked) return;
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(Object.values(instMeshes));
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const instanceId = intersect.instanceId;
+                const matrix = new THREE.Matrix4();
+                intersect.object.getMatrixAt(instanceId, matrix);
+                const pos = new THREE.Vector3().setFromMatrixPosition(matrix);
+
+                if (e.button === 0) { // 挖掘
+                    intersect.object.setMatrixAt(instanceId, new THREE.Matrix4().makeScale(0,0,0));
+                    intersect.object.instanceMatrix.needsUpdate = true;
+                    updateWorldBlock(pos.x, pos.y, pos.z, false);
+                } else if (e.button === 2) { // 放置
+                    const placePos = pos.clone().add(intersect.face.normal);
+                    const newBlock = new THREE.Mesh(geometry, materials.grass);
+                    newBlock.position.copy(placePos);
+                    scene.add(newBlock);
+                    updateWorldBlock(placePos.x, placePos.y, placePos.z, true);
+                }
+            }
+        });
+
+        // --- 动画循环 ---
+        let prevTime = performance.now();
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now();
+            if (controls.isLocked) {
+                const delta = (time - prevTime) / 1000;
+                velocity.x -= velocity.x * 12.0 * delta;
+                velocity.z -= velocity.z * 12.0 * delta;
+                velocity.y -= 0.45 * delta; 
+
+                const dir = new THREE.Vector3();
+                dir.z = Number(moveState.w) - Number(moveState.s);
+                dir.x = Number(moveState.d) - Number(moveState.a);
+                dir.normalize();
+
+                if (moveState.w || moveState.s) velocity.z -= dir.z * 40.0 * delta;
+                if (moveState.a || moveState.d) velocity.x -= dir.x * 40.0 * delta;
+
+                // --- 增强物理碰撞 ---
+                const oldPos = camera.position.clone();
+
+                // 1. 处理 X/Z 轴位移与墙壁碰撞
+                // 尝试 X 方向移动
+                controls.moveRight(-velocity.x * delta);
+                if (isBlockAt(camera.position.x + (velocity.x > 0 ? -PLAYER_RADIUS : PLAYER_RADIUS), camera.position.y - 0.5, camera.position.z)) {
+                    camera.position.x = oldPos.x;
+                }
+                // 尝试 Z 方向移动
+                controls.moveForward(-velocity.z * delta);
+                if (isBlockAt(camera.position.x, camera.position.y - 0.5, camera.position.z + (velocity.z > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS))) {
+                    camera.position.z = oldPos.z;
+                }
+
+                // 2. 处理 Y 轴位移与天花板/地面碰撞
+                camera.position.y += velocity.y;
+                
+                // 天花板检测 (头部位置)
+                if (isBlockAt(camera.position.x, camera.position.y + 0.2, camera.position.z)) {
+                    velocity.y = 0;
+                    camera.position.y = Math.floor(camera.position.y) + 0.45; 
+                }
+
+                // 地面检测 (脚下位置)
+                const groundY = getTerrainHeight(camera.position.x, camera.position.y, camera.position.z) + PLAYER_HEIGHT;
+                if (camera.position.y <= groundY) {
+                    velocity.y = Math.max(0, velocity.y);
+                    camera.position.y = groundY;
+                    canJump = true;
+                }
+            }
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        animate();
+    </script>
+</body>
+</html>
