@@ -3,44 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Minecraft Clone</title>
+    <title>Three.js Minecraft Clone - Ultimate Optimized</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
         canvas { display: block; }
         #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            transform: translate(-50%, -50%); pointer-events: none; mix-blend-mode: difference;
         }
         #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: white;
-            opacity: 0.8;
+            content: ''; position: absolute; background: rgba(255,255,255,0.9);
         }
         #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
         #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
-        #info {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: white;
-            text-shadow: 1px 1px 2px black;
-            pointer-events: none;
-            z-index: 10;
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        #info-panel {
+            background: rgba(0, 0, 0, 0.5); color: white; padding: 15px; border-bottom-right-radius: 10px;
+            backdrop-filter: blur(4px); text-shadow: 1px 1px 0 #000; width: max-content;
         }
+        
+        #toolbar {
+            display: flex; justify-content: center; gap: 5px; padding-bottom: 20px; flex-wrap: wrap; max-width: 600px; margin: 0 auto;
+        }
+        .slot {
+            width: 45px; height: 45px; border: 3px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.4);
+            border-radius: 5px; display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+        .slot.active { border-color: #fff; transform: translateY(-5px); box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .slot::after {
+            content: attr(data-key); position: absolute; top: 2px; left: 4px; font-size: 12px; opacity: 0.7;
+        }
+        .slot-img { width: 32px; height: 32px; image-rendering: pixelated; }
     </style>
 </head>
 <body>
     <div id="crosshair"></div>
-    <div id="info">
-        <b>点击屏幕开始</b><br>
-        WASD: 移动 | SPACE: 跳跃<br>
-        左键: 挖掘 | 右键: 放置 (草方块)
+    <div id="ui-layer">
+        <div id="info-panel">
+            <h3 style="margin:0 0 10px 0; color: #a4e4ff;">无限视界 - 绚丽生态版</h3>
+            <b>[点击屏幕任意位置开始]</b><br><br>
+            WASD: 移动 | Space: 跳跃/游泳 | Shift: 冲刺<br>
+            左键: 破坏 | 右键: 放置方块<br>
+            数字键 1-8: 切换手持方块
+        </div>
+        <div id="toolbar">
+            <div class="slot active" id="slot-1" data-key="1"><canvas class="slot-img" id="icon-1"></canvas></div>
+            <div class="slot" id="slot-2" data-key="2"><canvas class="slot-img" id="icon-2"></canvas></div>
+            <div class="slot" id="slot-3" data-key="3"><canvas class="slot-img" id="icon-3"></canvas></div>
+            <div class="slot" id="slot-4" data-key="4"><canvas class="slot-img" id="icon-4"></canvas></div>
+            <div class="slot" id="slot-5" data-key="5"><canvas class="slot-img" id="icon-5"></canvas></div>
+            <div class="slot" id="slot-6" data-key="6"><canvas class="slot-img" id="icon-6"></canvas></div>
+            <div class="slot" id="slot-7" data-key="7"><canvas class="slot-img" id="icon-7"></canvas></div>
+            <div class="slot" id="slot-8" data-key="8"><canvas class="slot-img" id="icon-8"></canvas></div>
+        </div>
     </div>
 
     <script type="importmap">
@@ -57,212 +76,486 @@
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
         import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
 
-        // --- 配置 ---
-        const WORLD_SIZE = 32;
-        const TERRAIN_HEIGHT = 12;
-        const PLAYER_HEIGHT = 1.8;
-        const PLAYER_RADIUS = 0.35; // 玩家碰撞半径
-        const simplex = new SimplexNoise();
-        
+        // ==========================================
+        // 1. 核心参数与全局配置
+        // ==========================================
+        const CONFIG = {
+            worldSize: 128,      // 渲染范围扩大至 128x128，面积提升4倍！
+            maxHeight: 24,       // 地形高度差提升
+            waterLevel: 8,       // 海平面高度
+            gravity: 25.0,
+            jumpForce: 8.5,
+            moveSpeed: 6.0,
+            sprintMulti: 1.5,
+            playerHeight: 1.8,   // 玩家物理真实高度
+            playerEyeHeight: 1.6,// 摄像机（眼睛）位置高度
+            playerHalfW: 0.3,    // 物理包围盒半宽
+            reachDistance: 7     // 破坏/放置的有效距离
+        };
+
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015); // 换用指数雾，远景过渡更自然
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(WORLD_SIZE / 2, 25, WORLD_SIZE / 2);
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(CONFIG.worldSize / 2, 30, CONFIG.worldSize / 2);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" }); // 关闭抗锯齿以获得像素风
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(50, 100, 50);
+        // 光照系统优化
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffe0, 1.0);
+        dirLight.position.set(50, 100, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40;
+        dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40;
+        dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         scene.add(dirLight);
 
-        // --- 纹理生成 ---
-        function createPixelTexture(baseColor, noiseColor) {
+        // ==========================================
+        // 2. 纹理生成与材质系统
+        // ==========================================
+        function createTexture(baseColor, noiseColor, topLighter = true) {
             const canvas = document.createElement('canvas');
             canvas.width = 16; canvas.height = 16;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = baseColor;
             ctx.fillRect(0, 0, 16, 16);
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 50; i++) {
                 ctx.fillStyle = noiseColor;
-                ctx.fillRect(Math.random()*16, Math.random()*16, 1, 1);
+                ctx.fillRect(Math.floor(Math.random()*16), Math.floor(Math.random()*16), 1, 1);
             }
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(0, 15, 16, 1);
-            ctx.fillRect(15, 0, 1, 16);
+            if(topLighter) {
+                ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(0, 0, 16, 1);
+                ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, 15, 16, 1); ctx.fillRect(15, 0, 1, 16);
+            }
             const tex = new THREE.CanvasTexture(canvas);
-            tex.magFilter = THREE.NearestFilter;
-            return tex;
+            tex.magFilter = THREE.NearestFilter; // 像素化采样
+            tex.colorSpace = THREE.SRGBColorSpace;
+            return { tex, canvas };
+        }
+
+        const texData = {
+            1: createTexture('#5e9e3d', '#4d8a2e'), // 草地 Grass
+            2: createTexture('#8b5a2b', '#6d4621'), // 泥土 Dirt
+            3: createTexture('#808080', '#696969'), // 石头 Stone
+            4: createTexture('#5c4033', '#3e2723', false), // 木头 Wood
+            5: createTexture('#2d5a27', '#1e3f1b'), // 树叶 Leaves
+            6: createTexture('#e3c988', '#d1b675'), // 沙子 Sand
+            7: createTexture('#3f8cc7', '#5cb3f0', false), // 水 Water
+            8: createTexture('#ffffff', '#e6e6e6')  // 雪 Snow
+        };
+
+        // 渲染UI图标
+        for(let i=1; i<=8; i++) {
+            document.getElementById(`icon-${i}`).getContext('2d').drawImage(texData[i].canvas, 0, 0, 16, 16, 0, 0, 300, 300);
         }
 
         const materials = {
-            grass: new THREE.MeshStandardMaterial({ map: createPixelTexture('#5e9e3d', '#4d8a2e') }),
-            dirt: new THREE.MeshStandardMaterial({ map: createPixelTexture('#8b5a2b', '#6d4621') }),
-            stone: new THREE.MeshStandardMaterial({ map: createPixelTexture('#808080', '#696969') })
+            1: new THREE.MeshStandardMaterial({ map: texData[1].tex, roughness: 0.8 }),
+            2: new THREE.MeshStandardMaterial({ map: texData[2].tex, roughness: 0.9 }),
+            3: new THREE.MeshStandardMaterial({ map: texData[3].tex, roughness: 0.7 }),
+            4: new THREE.MeshStandardMaterial({ map: texData[4].tex, roughness: 0.9 }),
+            5: new THREE.MeshStandardMaterial({ map: texData[5].tex, roughness: 1.0, alphaTest: 0.5 }), // alphaTest防止半透明遮挡Bug
+            6: new THREE.MeshStandardMaterial({ map: texData[6].tex, roughness: 1.0 }),
+            7: new THREE.MeshStandardMaterial({ map: texData[7].tex, roughness: 0.1, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+            8: new THREE.MeshStandardMaterial({ map: texData[8].tex, roughness: 0.5 })
         };
         const geometry = new THREE.BoxGeometry(1, 1, 1);
+        geometry.translate(0.5, 0.5, 0.5); // 核心修正：将几何体原点平移到左下角，严格对齐整数网格坐标系
+
+        // ==========================================
+        // 3. 高性能动态方块数据系统 (O(1) 增删改查)
+        // ==========================================
+        const MAX_BLOCKS_PER_TYPE = 250000; // 应对大型世界扩容
+        const worldData = new Map(); // key: "x,y,z", val: type
         
-        // --- 物理与地图数据 ---
-        const worldBlocks = {}; 
-        const instMeshes = {
-            grass: new THREE.InstancedMesh(geometry, materials.grass, WORLD_SIZE * WORLD_SIZE),
-            dirt: new THREE.InstancedMesh(geometry, materials.dirt, WORLD_SIZE * WORLD_SIZE * 4),
-            stone: new THREE.InstancedMesh(geometry, materials.stone, WORLD_SIZE * WORLD_SIZE * TERRAIN_HEIGHT)
+        // 每个方块类型的实例管理器
+        const instanceManagers = { 
+            1: createManager(1), 2: createManager(2), 3: createManager(3), 4: createManager(4),
+            5: createManager(5), 6: createManager(6), 7: createManager(7), 8: createManager(8)
         };
-
-        function updateWorldBlock(x, y, z, active) {
-            const ix = Math.round(x), iy = Math.round(y), iz = Math.round(z);
-            const key = `${ix},${iz}`;
-            if (!worldBlocks[key]) worldBlocks[key] = new Set();
-            if (active) worldBlocks[key].add(iy);
-            else worldBlocks[key].delete(iy);
+        
+        function createManager(type) {
+            const mesh = new THREE.InstancedMesh(geometry, materials[type], MAX_BLOCKS_PER_TYPE);
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            scene.add(mesh);
+            return {
+                mesh: mesh,
+                count: 0,
+                hashToIndex: new Map(), // "x,y,z" -> instanceIndex
+                indexToHash: new Array(MAX_BLOCKS_PER_TYPE) // instanceIndex -> "x,y,z"
+            };
         }
 
-        // 检查特定坐标是否有方块
-        function isBlockAt(x, y, z) {
-            const ix = Math.round(x), iy = Math.round(y), iz = Math.round(z);
-            const key = `${ix},${iz}`;
-            return worldBlocks[key] && worldBlocks[key].has(iy);
-        }
+        const _matrix = new THREE.Matrix4();
+        function getHash(x, y, z) { return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`; }
+        function getBlock(x, y, z) { return worldData.get(getHash(x, y, z)) || 0; }
 
-        function getTerrainHeight(x, y, z) {
-            const ix = Math.round(x), iz = Math.round(z);
-            const key = `${ix},${iz}`;
-            const ySet = worldBlocks[key];
-            if (!ySet || ySet.size === 0) return -1;
-            const currentY = Math.floor(y - PLAYER_HEIGHT + 0.5);
-            let highestBelow = -1;
-            for (let blockY of ySet) {
-                if (blockY <= currentY) highestBelow = Math.max(highestBelow, blockY);
+        function setBlock(x, y, z, type) {
+            x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
+            const hash = getHash(x, y, z);
+            const oldType = worldData.get(hash) || 0;
+
+            if (oldType === type) return; // 无变化
+            
+            // 1. 移除旧方块 (Swap-and-pop 算法，O(1)复杂度完美删除)
+            if (oldType !== 0) {
+                const mgr = instanceManagers[oldType];
+                const removeIndex = mgr.hashToIndex.get(hash);
+                const lastIndex = mgr.count - 1;
+                
+                if (removeIndex !== lastIndex) {
+                    // 将最后一个方块的数据移动到要删除的空缺位置
+                    const lastHash = mgr.indexToHash[lastIndex];
+                    mgr.mesh.getMatrixAt(lastIndex, _matrix);
+                    mgr.mesh.setMatrixAt(removeIndex, _matrix);
+                    mgr.hashToIndex.set(lastHash, removeIndex);
+                    mgr.indexToHash[removeIndex] = lastHash;
+                }
+                mgr.hashToIndex.delete(hash);
+                mgr.count--;
+                mgr.mesh.count = mgr.count;
+                mgr.mesh.instanceMatrix.needsUpdate = true;
+                worldData.delete(hash);
             }
-            return highestBelow !== -1 ? highestBelow + 0.5 : -1;
+
+            // 2. 增加新方块
+            if (type !== 0) {
+                const mgr = instanceManagers[type];
+                if (mgr.count >= MAX_BLOCKS_PER_TYPE) return; // 达到上限
+                
+                _matrix.makeTranslation(x, y, z);
+                const newIndex = mgr.count;
+                mgr.mesh.setMatrixAt(newIndex, _matrix);
+                mgr.hashToIndex.set(hash, newIndex);
+                mgr.indexToHash[newIndex] = hash;
+                
+                mgr.count++;
+                mgr.mesh.count = mgr.count;
+                mgr.mesh.instanceMatrix.needsUpdate = true;
+                worldData.set(hash, type);
+            }
         }
 
-        function generateTerrain() {
-            const matrix = new THREE.Matrix4();
-            let counters = { grass: 0, dirt: 0, stone: 0 };
-            for (let x = 0; x < WORLD_SIZE; x++) {
-                for (let z = 0; z < WORLD_SIZE; z++) {
-                    const noise = simplex.noise(x / 20, z / 20);
-                    const h = Math.floor((noise + 1) * TERRAIN_HEIGHT / 2) + 3;
-                    for (let y = 0; y < h; y++) {
-                        matrix.setPosition(x, y, z);
-                        let type = y === h - 1 ? 'grass' : (y > h - 4 ? 'dirt' : 'stone');
-                        instMeshes[type].setMatrixAt(counters[type]++, matrix);
-                        updateWorldBlock(x, y, z, true);
+        // ==========================================
+        // 多彩生态系统生成 (Biomes & Terrain)
+        // ==========================================
+        const simplex = new SimplexNoise();
+        
+        function generateTree(bx, by, bz) {
+            const height = Math.floor(Math.random() * 3) + 4; // 树干高4-6
+            for (let y = 0; y < height; y++) setBlock(bx, by + y, bz, 4); // 木头
+            
+            // 树冠 (圆润的方块群)
+            for (let lx = -2; lx <= 2; lx++) {
+                for (let ly = height - 2; ly <= height + 1; ly++) {
+                    for (let lz = -2; lz <= 2; lz++) {
+                        // 削掉四个角让树冠更圆润自然
+                        if (Math.abs(lx) === 2 && Math.abs(lz) === 2 && (ly === height + 1 || Math.random() < 0.5)) continue;
+                        if (getBlock(bx + lx, by + ly, bz + lz) === 0) {
+                            setBlock(bx + lx, by + ly, bz + lz, 5); // 树叶
+                        }
                     }
                 }
             }
-            Object.keys(instMeshes).forEach(k => { scene.add(instMeshes[k]); });
         }
-        generateTerrain();
 
-        // --- 控制 ---
+        for (let x = 0; x < CONFIG.worldSize; x++) {
+            for (let z = 0; z < CONFIG.worldSize; z++) {
+                // 复合噪声：基础地形 + 丘陵起伏
+                const n1 = simplex.noise(x / 80, z / 80);
+                const n2 = simplex.noise(x / 25, z / 25) * 0.4;
+                const noise = n1 + n2;
+                
+                // 地形高度映射
+                const h = Math.floor((noise + 1.2) * (CONFIG.maxHeight / 2)) + 2; 
+                
+                for (let y = 0; y <= Math.max(h, CONFIG.waterLevel); y++) {
+                    if (y > h) {
+                        if (y <= CONFIG.waterLevel) setBlock(x, y, z, 7); // 填补海水
+                        continue;
+                    }
+                    
+                    let type = 3; // 默认石头打底
+                    
+                    if (y === h) { // 地表层
+                        if (y <= CONFIG.waterLevel + 1) type = 6; // 沙滩
+                        else if (y > 18) type = 8; // 高山积雪
+                        else type = 1; // 草地
+                    } else if (y > h - 4) { // 浅地表层
+                        if (y <= CONFIG.waterLevel + 1) type = 6; // 沙子底
+                        else type = 2; // 泥土
+                    }
+                    
+                    setBlock(x, y, z, type);
+                }
+
+                // 在适宜的草地上概率生成树木
+                if (h > CONFIG.waterLevel + 1 && h < 16 && Math.random() < 0.015) {
+                    generateTree(x, h + 1, z);
+                }
+            }
+        }
+
+        // ==========================================
+        // 4. 物理系统：精确 AABB 碰撞检测
+        // ==========================================
+        // 玩家的物理锚点在脚底中心
+        function checkCollisionAABB(pos) {
+            const minX = Math.floor(pos.x - CONFIG.playerHalfW);
+            const maxX = Math.floor(pos.x + CONFIG.playerHalfW);
+            const minY = Math.floor(pos.y);
+            const maxY = Math.floor(pos.y + CONFIG.playerHeight);
+            const minZ = Math.floor(pos.z - CONFIG.playerHalfW);
+            const maxZ = Math.floor(pos.z + CONFIG.playerHalfW);
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        const block = getBlock(x, y, z);
+                        // 碰撞豁免：空气(0)、水(7)、树叶(5 - 允许穿插树叶不卡头)
+                        if (block !== 0 && block !== 7 && block !== 5) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // ==========================================
+        // 5. 交互：DDA 体素射线检测 (极其精准)
+        // ==========================================
+        const selGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.005, 1.005, 1.005));
+        selGeo.translate(0.5, 0.5, 0.5); // 边框同步平移，对齐整数网格
+        const selectionBox = new THREE.LineSegments(
+            selGeo,
+            new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
+        );
+        selectionBox.visible = false;
+        scene.add(selectionBox);
+
+        function raycastVoxel(origin, direction, maxDist) {
+            let x = Math.floor(origin.x), y = Math.floor(origin.y), z = Math.floor(origin.z);
+            const stepX = Math.sign(direction.x), stepY = Math.sign(direction.y), stepZ = Math.sign(direction.z);
+            
+            let tMaxX = stepX !== 0 ? (stepX > 0 ? (Math.floor(origin.x) + 1 - origin.x) : (origin.x - Math.floor(origin.x))) / Math.abs(direction.x) : Infinity;
+            let tMaxY = stepY !== 0 ? (stepY > 0 ? (Math.floor(origin.y) + 1 - origin.y) : (origin.y - Math.floor(origin.y))) / Math.abs(direction.y) : Infinity;
+            let tMaxZ = stepZ !== 0 ? (stepZ > 0 ? (Math.floor(origin.z) + 1 - origin.z) : (origin.z - Math.floor(origin.z))) / Math.abs(direction.z) : Infinity;
+            
+            const tDeltaX = stepX !== 0 ? 1 / Math.abs(direction.x) : Infinity;
+            const tDeltaY = stepY !== 0 ? 1 / Math.abs(direction.y) : Infinity;
+            const tDeltaZ = stepZ !== 0 ? 1 / Math.abs(direction.z) : Infinity;
+
+            const normal = new THREE.Vector3();
+
+            for (let i = 0; i < maxDist * 3; i++) {
+                if (getBlock(x, y, z) !== 0) return { hit: true, pos: new THREE.Vector3(x, y, z), normal: normal };
+                
+                if (tMaxX < tMaxY) {
+                    if (tMaxX < tMaxZ) { x += stepX; tMaxX += tDeltaX; normal.set(-stepX, 0, 0); } 
+                    else { z += stepZ; tMaxZ += tDeltaZ; normal.set(0, 0, -stepZ); }
+                } else {
+                    if (tMaxY < tMaxZ) { y += stepY; tMaxY += tDeltaY; normal.set(0, -stepY, 0); } 
+                    else { z += stepZ; tMaxZ += tDeltaZ; normal.set(0, 0, -stepZ); }
+                }
+            }
+            return { hit: false };
+        }
+
+        // ==========================================
+        // 6. 控制器与输入事件
+        // ==========================================
         const controls = new PointerLockControls(camera, document.body);
-        document.body.addEventListener('click', () => controls.lock());
+        document.body.addEventListener('click', () => { if(!controls.isLocked) controls.lock(); });
 
-        const moveState = { w: false, s: false, a: false, d: false };
-        const velocity = new THREE.Vector3();
-        let canJump = false;
+        const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
+        let activeBlockType = 1;
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyW') moveState.w = true;
-            if (e.code === 'KeyS') moveState.s = true;
-            if (e.code === 'KeyA') moveState.a = true;
-            if (e.code === 'KeyD') moveState.d = true;
-            if (e.code === 'Space' && canJump) { velocity.y = 0.15; canJump = false; }
+            const code = e.code.toLowerCase();
+            if (code === 'keyw') keys.w = true;
+            if (code === 'keys') keys.s = true;
+            if (code === 'keya') keys.a = true;
+            if (code === 'keyd') keys.d = true;
+            if (code === 'space') keys.space = true;
+            if (code === 'shiftleft') keys.shift = true;
+            
+            // 切换方块
+            if (e.code.startsWith('Digit') && e.key >= '1' && e.key <= '8') {
+                activeBlockType = parseInt(e.key);
+                document.querySelectorAll('.slot').forEach(el => el.classList.remove('active'));
+                document.getElementById(`slot-${activeBlockType}`).classList.add('active');
+            }
         });
         document.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW') moveState.w = false;
-            if (e.code === 'KeyS') moveState.s = false;
-            if (e.code === 'KeyA') moveState.a = false;
-            if (e.code === 'KeyD') moveState.d = false;
+            const code = e.code.toLowerCase();
+            if (code === 'keyw') keys.w = false;
+            if (code === 'keys') keys.s = false;
+            if (code === 'keya') keys.a = false;
+            if (code === 'keyd') keys.d = false;
+            if (code === 'space') keys.space = false;
+            if (code === 'shiftleft') keys.shift = false;
         });
 
-        // --- 交互 ---
-        const raycaster = new THREE.Raycaster();
+        // 鼠标交互 (破坏与放置)
+        const _dir = new THREE.Vector3();
         window.addEventListener('mousedown', (e) => {
             if (!controls.isLocked) return;
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects(Object.values(instMeshes));
-            if (intersects.length > 0) {
-                const intersect = intersects[0];
-                const instanceId = intersect.instanceId;
-                const matrix = new THREE.Matrix4();
-                intersect.object.getMatrixAt(instanceId, matrix);
-                const pos = new THREE.Vector3().setFromMatrixPosition(matrix);
-
-                if (e.button === 0) { // 挖掘
-                    intersect.object.setMatrixAt(instanceId, new THREE.Matrix4().makeScale(0,0,0));
-                    intersect.object.instanceMatrix.needsUpdate = true;
-                    updateWorldBlock(pos.x, pos.y, pos.z, false);
-                } else if (e.button === 2) { // 放置
-                    const placePos = pos.clone().add(intersect.face.normal);
-                    const newBlock = new THREE.Mesh(geometry, materials.grass);
-                    newBlock.position.copy(placePos);
-                    scene.add(newBlock);
-                    updateWorldBlock(placePos.x, placePos.y, placePos.z, true);
+            camera.getWorldDirection(_dir);
+            const hitResult = raycastVoxel(camera.position, _dir, CONFIG.reachDistance);
+            
+            if (hitResult.hit) {
+                if (e.button === 0) { // 左键：破坏
+                    setBlock(hitResult.pos.x, hitResult.pos.y, hitResult.pos.z, 0);
+                } else if (e.button === 2) { // 右键：放置
+                    const placePos = hitResult.pos.clone().add(hitResult.normal);
+                    
+                    // 防穿模判定：不允许把方块放在玩家自己身上
+                    setBlock(placePos.x, placePos.y, placePos.z, activeBlockType);
+                    if (checkCollisionAABB(playerPos)) {
+                        setBlock(placePos.x, placePos.y, placePos.z, 0); // 撤销放置
+                    }
                 }
             }
         });
 
-        // --- 动画循环 ---
-        let prevTime = performance.now();
+        // ==========================================
+        // 7. 核心动画与物理循环
+        // ==========================================
+        
+        // 动态计算出生点，防止出生在方块里或水底
+        let spawnY = 30;
+        for(let y = 30; y > 0; y--) {
+            if(getBlock(CONFIG.worldSize / 2, y, CONFIG.worldSize / 2) !== 0) {
+                spawnY = y + 2; break;
+            }
+        }
+        
+        const playerPos = new THREE.Vector3(CONFIG.worldSize / 2, spawnY, CONFIG.worldSize / 2); // 真实物理位置锚点（脚底）
+        const velocity = new THREE.Vector3();
+        const clock = new THREE.Clock();
+        let onGround = false;
+
         function animate() {
             requestAnimationFrame(animate);
-            const time = performance.now();
+            let delta = Math.min(clock.getDelta(), 0.1); 
+
             if (controls.isLocked) {
-                const delta = (time - prevTime) / 1000;
-                velocity.x -= velocity.x * 12.0 * delta;
-                velocity.z -= velocity.z * 12.0 * delta;
-                velocity.y -= 0.45 * delta; 
-
-                const dir = new THREE.Vector3();
-                dir.z = Number(moveState.w) - Number(moveState.s);
-                dir.x = Number(moveState.d) - Number(moveState.a);
-                dir.normalize();
-
-                if (moveState.w || moveState.s) velocity.z -= dir.z * 40.0 * delta;
-                if (moveState.a || moveState.d) velocity.x -= dir.x * 40.0 * delta;
-
-                // --- 增强物理碰撞 ---
-                const oldPos = camera.position.clone();
-
-                // 1. 处理 X/Z 轴位移与墙壁碰撞
-                // 尝试 X 方向移动
-                controls.moveRight(-velocity.x * delta);
-                if (isBlockAt(camera.position.x + (velocity.x > 0 ? -PLAYER_RADIUS : PLAYER_RADIUS), camera.position.y - 0.5, camera.position.z)) {
-                    camera.position.x = oldPos.x;
-                }
-                // 尝试 Z 方向移动
-                controls.moveForward(-velocity.z * delta);
-                if (isBlockAt(camera.position.x, camera.position.y - 0.5, camera.position.z + (velocity.z > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS))) {
-                    camera.position.z = oldPos.z;
+                // 处理 UI 准星更新
+                camera.getWorldDirection(_dir);
+                const rayHit = raycastVoxel(camera.position, _dir, CONFIG.reachDistance);
+                if (rayHit.hit) {
+                    selectionBox.position.copy(rayHit.pos);
+                    selectionBox.visible = true;
+                } else {
+                    selectionBox.visible = false;
                 }
 
-                // 2. 处理 Y 轴位移与天花板/地面碰撞
-                camera.position.y += velocity.y;
+                // --- 终极 AABB Sweep 物理引擎循环 ---
                 
-                // 天花板检测 (头部位置)
-                if (isBlockAt(camera.position.x, camera.position.y + 0.2, camera.position.z)) {
-                    velocity.y = 0;
-                    camera.position.y = Math.floor(camera.position.y) + 0.45; 
+                // 1. 获取摄像机水平朝向 (Yaw)
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(camera.quaternion);
+                const yaw = euler.y;
+
+                // 2. 解析输入意图到绝对世界向量
+                const moveX = Number(keys.d) - Number(keys.a);
+                const moveZ = Number(keys.s) - Number(keys.w);
+                const inputDir = new THREE.Vector3(moveX, 0, moveZ);
+                if (inputDir.lengthSq() > 0) inputDir.normalize();
+
+                // 将输入向量按摄像机朝向旋转，转换为真实的世界运动意图
+                inputDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                const speedMult = keys.shift ? CONFIG.sprintMulti : 1.0;
+                const targetVX = inputDir.x * CONFIG.moveSpeed * speedMult;
+                const targetVZ = inputDir.z * CONFIG.moveSpeed * speedMult;
+                
+                // 判断是否在水中 (脚部或腰部位置)
+                const inWater = getBlock(Math.floor(playerPos.x), Math.floor(playerPos.y), Math.floor(playerPos.z)) === 7 || 
+                                getBlock(Math.floor(playerPos.x), Math.floor(playerPos.y + 0.5), Math.floor(playerPos.z)) === 7;
+
+                // 3. 施加摩擦力与加速度
+                const friction = onGround ? 10.0 : (inWater ? 4.0 : 2.0); 
+                velocity.x += (targetVX - velocity.x) * friction * delta;
+                velocity.z += (targetVZ - velocity.z) * friction * delta;
+                
+                if (inWater) {
+                    // 水中流体物理：空格键上浮，重力极大减缓
+                    if (keys.space) velocity.y = 4.0; 
+                    velocity.y -= (CONFIG.gravity * 0.15) * delta;
+                    velocity.x *= 0.8; velocity.z *= 0.8; // 水阻力
+                    onGround = false;
+                } else {
+                    // 正常陆地物理
+                    if (onGround && keys.space) { velocity.y = CONFIG.jumpForce; onGround = false; }
+                    velocity.y -= CONFIG.gravity * delta;
                 }
 
-                // 地面检测 (脚下位置)
-                const groundY = getTerrainHeight(camera.position.x, camera.position.y, camera.position.z) + PLAYER_HEIGHT;
-                if (camera.position.y <= groundY) {
-                    velocity.y = Math.max(0, velocity.y);
-                    camera.position.y = groundY;
-                    canJump = true;
+                const epsilon = 0.001; // 防浮点数黏连微调值，极其关键
+
+                // 4. 三轴独立 AABB 移动结算
+                
+                // --- X轴碰撞与滑动处理 ---
+                playerPos.x += velocity.x * delta;
+                if (checkCollisionAABB(playerPos)) {
+                    if (velocity.x > 0) {
+                        playerPos.x = Math.floor(playerPos.x + CONFIG.playerHalfW) - CONFIG.playerHalfW - epsilon;
+                    } else if (velocity.x < 0) {
+                        playerPos.x = Math.floor(playerPos.x - CONFIG.playerHalfW) + 1 + CONFIG.playerHalfW + epsilon;
+                    }
+                    velocity.x = 0;
                 }
+
+                // --- Z轴碰撞与滑动处理 ---
+                playerPos.z += velocity.z * delta;
+                if (checkCollisionAABB(playerPos)) {
+                    if (velocity.z > 0) {
+                        playerPos.z = Math.floor(playerPos.z + CONFIG.playerHalfW) - CONFIG.playerHalfW - epsilon;
+                    } else if (velocity.z < 0) {
+                        playerPos.z = Math.floor(playerPos.z - CONFIG.playerHalfW) + 1 + CONFIG.playerHalfW + epsilon;
+                    }
+                    velocity.z = 0;
+                }
+
+                // --- Y轴碰撞与落地处理 ---
+                playerPos.y += velocity.y * delta;
+                if (checkCollisionAABB(playerPos)) {
+                    if (velocity.y > 0) {
+                        // 撞到天花板，精准吸附到方块底部
+                        playerPos.y = Math.floor(playerPos.y + CONFIG.playerHeight) - CONFIG.playerHeight - epsilon; 
+                        velocity.y = 0;
+                    } else if (velocity.y < 0) {
+                        // 落地，精准吸附到方块顶部
+                        playerPos.y = Math.floor(playerPos.y) + 1; 
+                        velocity.y = 0;
+                        onGround = true;
+                    }
+                } else {
+                    onGround = false;
+                    // 在平地上行走时，实时检测脚底边缘是否悬空，实现无缝掉落
+                    if (velocity.y === 0) {
+                        playerPos.y -= 0.01;
+                        if (checkCollisionAABB(playerPos)) onGround = true;
+                        playerPos.y += 0.01;
+                    }
+                }
+                
+                // 世界边界判定
+                if (playerPos.y < -10) {
+                    playerPos.set(CONFIG.worldSize/2, 30, CONFIG.worldSize/2);
+                    velocity.set(0,0,0);
+                }
+
+                // 5. 物理坐标绑定：玩家脚底物理锚点 + 眼睛高度 = 摄像机最终渲染位置
+                camera.position.set(playerPos.x, playerPos.y + CONFIG.playerEyeHeight, playerPos.z);
             }
-            prevTime = time;
             renderer.render(scene, camera);
         }
 
@@ -271,6 +564,8 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // 启动循环
         animate();
     </script>
 </body>
