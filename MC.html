@@ -265,7 +265,7 @@
         // --- 稳健小猪系统 ---
         const mobs = [];
         let pigBase = null;
-        new GLTFLoader().load('minecraft_-_pig.glb', (gltf) => {
+        new GLTFLoader().load('pig.glb', (gltf) => {
             pigBase = gltf.scene;
             pigBase.scale.set(0.1, 0.1, 0.1);
             pigBase.traverse(n => { if(n.isMesh) n.material = n.material.clone(); });
