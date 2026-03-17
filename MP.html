@@ -1,101 +1,257 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学校门户</title>
+    <title>Mozaïk Portail Clone</title>
     <style>
+        :root {
+            --m-blue: #0071bc;
+            --m-light-blue: #e1f0fa;
+            --m-purple: #9d1b5a;
+            --m-orange: #f7941d;
+            --bg-gray: #f2f2f2;
+            --border: #dcdcdc;
+            --text-dark: #333;
+            --text-muted: #777;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
+            background-color: var(--bg-gray);
+            color: var(--text-dark);
+            font-size: 13px;
         }
-        .container {
-            display: flex;
-            max-width: 1200px;
-            margin: auto;
-            background: white;
-            border: 1px solid #ddd;
-        }
-        .sidebar, .main {
-            padding: 15px;
-        }
-        .sidebar {
-            flex: 1;
-            background: #e8f0fe;
-        }
-        .main {
-            flex: 2;
-            background: #ffffff;
-        }
-        .header {
-            background: #0056b3;
+
+        /* --- Header --- */
+        .top-header {
+            background-color: var(--m-blue);
             color: white;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .brand { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 5px; }
+
+        /* --- Tabs --- */
+        .main-nav {
+            background: white;
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 0 5%;
+        }
+        .nav-item {
+            padding: 12px 25px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-item.active { background-color: var(--m-blue); color: white; border-bottom: 2px solid var(--m-blue); }
+        .nav-item.purple { color: var(--m-purple); }
+        .nav-item.orange { color: var(--m-orange); }
+
+        /* --- Sub-header --- */
+        .sub-header {
+            background: white;
+            padding: 10px 5%;
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--m-blue);
+            font-size: 12px;
+        }
+
+        /* --- Grid Layout --- */
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 20px;
+            padding: 20px 5%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .card-header {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            color: var(--m-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- Left Column: Schedule --- */
+        .schedule-nav {
+            background-color: var(--m-blue);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 10px;
             text-align: center;
         }
-        .section {
-            margin-bottom: 20px;
+        .schedule-row {
+            display: flex;
+            border-bottom: 1px solid #f0f0f0;
             padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
         }
-        .section h2 {
-            margin: 0;
-            font-size: 1.2em;
+        .time-col { width: 50px; color: #cc0000; font-weight: bold; font-size: 11px; }
+        .course-col { flex: 1; }
+        .course-col strong { display: block; font-size: 13px; }
+        .course-col span { font-size: 11px; color: var(--text-muted); }
+
+        .links-list { margin-top: 15px; }
+        .links-list a { display: block; color: var(--m-blue); text-decoration: none; margin-bottom: 10px; font-size: 12px; }
+
+        /* --- Middle Column: Messages --- */
+        .msg-block { padding: 15px; border-bottom: 1px solid #eee; }
+        .msg-meta { text-align: right; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+        .msg-sender { font-weight: bold; }
+        .msg-subject { color: var(--text-muted); font-size: 11px; }
+        .msg-body { margin-top: 8px; }
+
+        /* --- Right Column: Results & Tasks --- */
+        .result-content { padding: 15px; display: flex; justify-content: space-between; }
+        .score { text-align: right; font-weight: bold; font-size: 16px; }
+
+        .info-box {
+            background: #fdf8e4;
+            border: 1px dashed #e6db55;
+            padding: 12px;
+            margin: 10px;
+            font-size: 11px;
         }
-        .button {
-            background-color: #0056b3;
-            color: white;
-            border: none;
+
+        .task-ribbon {
+            background: #eee;
+            padding: 5px 10px;
+            border-radius: 0 15px 15px 0;
+            display: inline-block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .task-card {
+            border-left: 4px solid #00bcd4;
             padding: 10px;
-            cursor: pointer;
+            margin: 0 10px 10px 10px;
+            background: #fafafa;
         }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>mozaïkportail</h1>
-    <p>Élève</p>
+<header class="top-header">
+    <div class="brand">⠿ mozaïkportail <small>Élève</small></div>
+    <div>(En) Zhanyi ▼</div>
+</header>
+
+<nav class="main-nav">
+    <div class="nav-item active">⟳ Ma vie scolaire</div>
+    <div class="nav-item purple">▤ Mes cours</div>
+    <div class="nav-item orange">☼ Ressources</div>
+</nav>
+
+<div class="sub-header">
+    <span>🏠 Accueil</span>
+    <span>📄 Bulletins</span>
 </div>
 
-<div class="container">
-    <div class="sidebar">
-        <div class="section">
-            <h2>Ma vie scolaire</h2>
-            <p><strong>Mardi 17 mars</strong></p>
-            <p>09:15 Musique sec.2 - Local 1401</p>
-            <p>10:30 Français sec.2 - Local 2062</p>
-            <p>12:00 Édu Physique sec.2 - Local BLC09</p>
-            <p>14:40 Mathématiques sec.2 - Local 3004</p>
-            <button class="button">Voir en mode semaine</button>
-            <p>Mes absences et retards</p>
-            <p>Mon d'aide</p>
-            <button class="button">Télécharger l'horaire</button>
+<div class="main-container">
+    
+    <!-- LEFT -->
+    <section>
+        <div class="card">
+            <div class="schedule-nav">
+                <span>◀</span>
+                <div><strong>Mardi 17 mars</strong><br><small>Jour 2</small></div>
+                <span>▶</span>
+            </div>
+            <div class="schedule-row">
+                <div class="time-col">09:15<br>10:30</div>
+                <div class="course-col"><strong>Musique sec.2</strong><span>Local 1401</span></div>
+            </div>
+            <div class="schedule-row">
+                <div class="time-col">10:45<br>12:00</div>
+                <div class="course-col"><strong>Français sec.2</strong><span>Local 2052</span></div>
+            </div>
+            <div class="schedule-row">
+                <div class="time-col">13:10<br>14:25</div>
+                <div class="course-col"><strong>Edu Physique sec.2</strong><span>Local BLOC9</span></div>
+            </div>
+            <div class="schedule-row">
+                <div class="time-col">14:40<br>15:55</div>
+                <div class="course-col"><strong>Mathématiques sec.2</strong><span>Local 3004</span></div>
+            </div>
+            <div style="text-align: right; padding: 10px;"><a href="#" style="color:var(--m-blue); text-decoration:none; font-size:11px;">Voir en mode semaine ></a></div>
         </div>
-    </div>
 
-    <div class="main">
-        <div class="section">
-            <h2>Messages</h2>
-            <p>Malika Larara</p>
-            <p>Mathématiques sec.2 - Sommetsp. p.216#2,3</p>
-            <p>Jeudi 12 mars 14:24</p>
+        <div class="links-list">
+            <a href="#">Mes absences et retards ></a>
+            <a href="#">Mon plan d'aide ></a>
+            <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
+                <strong>Télécharger l'horaire</strong><br>
+                <small>Dernière mise à jour: 10 septembre 2024</small>
+            </div>
         </div>
-        <div class="section">
-            <h2>Dernier résultat</h2>
-            <p>Anglais, enrichi</p>
-            <p>Grammar test 56/60 (92%)</p>
-            <p>27 février</p>
+    </section>
+
+    <!-- MIDDLE -->
+    <section>
+        <div class="card">
+            <div class="card-header">✉ Messages</div>
+            <div class="msg-block">
+                <div class="msg-meta">jeudi 12 mars 14:24</div>
+                <div class="msg-sender">Malika Larara</div>
+                <div class="msg-subject">Mathématiques sec.2</div>
+                <div class="msg-body">Sommets p. 216 # 2,3</div>
+            </div>
+            <div class="msg-block">
+                <div class="msg-meta">jeudi 22 janvier 09:28</div>
+                <div class="msg-sender">Malika Larara</div>
+                <div class="msg-subject">Mathématiques sec.2</div>
+                <div class="msg-body">Sommets p. 100 # 3, 4, 5<br>p. 101 à 103 # 6 à 9</div>
+            </div>
         </div>
-        <div class="section">
-            <h2>Travaux de la semaine</h2>
-            <p>Anglais, enrichi</p>
-            <p>Homework p. 185-186, 2</p>
-            <button class="button">Voir tout</button>
+    </section>
+
+    <!-- RIGHT -->
+    <section>
+        <div class="card">
+            <div class="card-header">📊 Dernier résultat</div>
+            <div class="result-content">
+                <div>Anglais, enrichi<br><small>Grammar test<br>27 février</small></div>
+                <div class="score">55/60<br><small>(92%)</small></div>
+            </div>
         </div>
-    </div>
+
+        <div class="card">
+            <div class="card-header">📅 Travaux de la semaine <span style="flex:1; text-align:right; font-weight:normal; font-size:11px;">Voir tout ></span></div>
+            <div class="info-box">
+                💡 Pour voir les travaux des autres semaines, cliquez sur « Voir tout ».
+                <br><br>
+                <span style="text-decoration:underline;">Ne plus afficher</span> <span style="float:right;">Fermer</span>
+            </div>
+            <div class="task-ribbon">Mercredi 18 mars</div>
+            <div class="task-card">
+                <strong>Anglais, enrichi</strong><br>
+                homework p. 185-186, 2...
+            </div>
+        </div>
+    </section>
 </div>
 
 </body>
