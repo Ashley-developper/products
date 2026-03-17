@@ -3,94 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mozaïk Portail Clone</title>
+    <title>Mozaïk Portail - Élève</title>
     <style>
         :root {
             --m-blue: #0071bc;
+            --m-dark-blue: #005a96;
             --m-light-blue: #e1f0fa;
             --m-purple: #9d1b5a;
             --m-orange: #f7941d;
-            --bg-gray: #f2f2f2;
+            --m-cyan: #00bcd4;
+            --bg-gray: #f4f7f9;
             --border: #dcdcdc;
             --text-dark: #333;
-            --text-muted: #777;
+            --text-muted: #666;
+            --white: #ffffff;
         }
 
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             background-color: var(--bg-gray);
             color: var(--text-dark);
             font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         /* --- Header --- */
         .top-header {
             background-color: var(--m-blue);
             color: white;
-            padding: 8px 20px;
+            width: 100%;
+            padding: 8px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-sizing: border-box;
         }
-        .brand { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 5px; }
+        .brand { font-weight: bold; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .brand small { font-weight: normal; opacity: 0.9; font-size: 12px; margin-top: 4px; }
 
-        /* --- Tabs --- */
+        /* --- Navigation Tabs --- */
         .main-nav {
-            background: white;
+            background: var(--white);
+            width: 100%;
             display: flex;
+            justify-content: center;
             border-bottom: 1px solid var(--border);
-            padding: 0 5%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .nav-item {
-            padding: 12px 25px;
+            padding: 15px 30px;
             font-weight: bold;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            color: var(--text-muted);
+            transition: 0.2s;
         }
-        .nav-item.active { background-color: var(--m-blue); color: white; border-bottom: 2px solid var(--m-blue); }
+        .nav-item.active { 
+            background-color: var(--m-blue); 
+            color: white; 
+        }
         .nav-item.purple { color: var(--m-purple); }
         .nav-item.orange { color: var(--m-orange); }
 
         /* --- Sub-header --- */
         .sub-header {
-            background: white;
-            padding: 10px 5%;
+            background: var(--white);
+            width: 100%;
+            max-width: 1200px;
+            padding: 10px 20px;
             display: flex;
             justify-content: flex-end;
-            gap: 20px;
+            gap: 25px;
             border-bottom: 1px solid var(--border);
             color: var(--m-blue);
-            font-size: 12px;
+            font-size: 13px;
+            box-sizing: border-box;
         }
 
-        /* --- Grid Layout --- */
+        /* --- Main Content Layout --- */
         .main-container {
             display: grid;
-            grid-template-columns: 320px 1fr 320px;
+            grid-template-columns: 320px 1fr 340px;
             gap: 20px;
-            padding: 20px 5%;
-            max-width: 1400px;
-            margin: 0 auto;
+            padding: 20px;
+            max-width: 1200px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
+        /* --- Card Styles --- */
         .card {
-            background: white;
+            background: var(--white);
             border: 1px solid var(--border);
+            border-radius: 4px;
             margin-bottom: 20px;
-            position: relative;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
         .card-header {
-            padding: 10px;
+            padding: 12px 15px;
             border-bottom: 1px solid #eee;
             font-weight: bold;
             color: var(--m-blue);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            background-color: #fafafa;
         }
 
         /* --- Left Column: Schedule --- */
@@ -100,63 +124,83 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
+            padding: 12px;
             text-align: center;
         }
         .schedule-row {
             display: flex;
-            border-bottom: 1px solid #f0f0f0;
-            padding: 10px;
+            border-bottom: 1px solid #f2f2f2;
+            padding: 12px 15px;
+            align-items: center;
         }
-        .time-col { width: 50px; color: #cc0000; font-weight: bold; font-size: 11px; }
-        .course-col { flex: 1; }
-        .course-col strong { display: block; font-size: 13px; }
+        .time-col { 
+            width: 60px; 
+            color: #d32f2f; 
+            font-weight: bold; 
+            font-size: 11px; 
+            line-height: 1.4;
+        }
+        .course-col { flex: 1; padding-left: 10px; }
+        .course-col strong { display: block; font-size: 13px; color: #333; }
         .course-col span { font-size: 11px; color: var(--text-muted); }
 
-        .links-list { margin-top: 15px; }
-        .links-list a { display: block; color: var(--m-blue); text-decoration: none; margin-bottom: 10px; font-size: 12px; }
-
         /* --- Middle Column: Messages --- */
-        .msg-block { padding: 15px; border-bottom: 1px solid #eee; }
-        .msg-meta { text-align: right; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
-        .msg-sender { font-weight: bold; }
-        .msg-subject { color: var(--text-muted); font-size: 11px; }
-        .msg-body { margin-top: 8px; }
+        .msg-block { padding: 20px; border-bottom: 1px solid #f0f0f0; position: relative; }
+        .msg-meta { text-align: right; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+        .msg-sender { font-weight: bold; color: #444; }
+        .msg-subject { color: #888; font-size: 11px; margin-bottom: 6px; }
+        .msg-body { color: #333; line-height: 1.5; }
 
         /* --- Right Column: Results & Tasks --- */
-        .result-content { padding: 15px; display: flex; justify-content: space-between; }
-        .score { text-align: right; font-weight: bold; font-size: 16px; }
+        .result-content { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .score { text-align: right; color: var(--m-blue); font-weight: bold; font-size: 20px; }
+        .score small { font-size: 12px; color: var(--text-muted); font-weight: normal; }
 
-        .info-box {
-            background: #fdf8e4;
-            border: 1px dashed #e6db55;
-            padding: 12px;
-            margin: 10px;
+        .task-row {
+            border-left: 5px solid var(--m-cyan);
+            padding: 12px 15px;
+            margin: 15px;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* --- Links & Buttons --- */
+        .footer-links { padding: 10px 0; border-top: 1px solid #eee; margin-top: 20px; }
+        .footer-links a { display: block; padding: 5px 0; color: var(--m-blue); text-decoration: none; font-size: 13px; }
+        .footer-links a:hover { text-decoration: underline; }
+
+        .btn-view-week {
+            text-align: right;
+            padding: 10px 15px;
             font-size: 11px;
+            border-top: 1px solid #f2f2f2;
         }
+        .btn-view-week a { color: var(--m-blue); text-decoration: none; }
 
-        .task-ribbon {
-            background: #eee;
-            padding: 5px 10px;
-            border-radius: 0 15px 15px 0;
-            display: inline-block;
-            margin: 10px 0;
-            font-weight: bold;
+        /* Notification box */
+        .notice-box {
+            background-color: #fdfae6;
+            border: 1px dashed #e6db55;
+            margin: 15px;
+            padding: 12px;
+            font-size: 11px;
+            color: #666;
+            position: relative;
         }
+        .notice-close { position: absolute; top: 5px; right: 8px; cursor: pointer; }
 
-        .task-card {
-            border-left: 4px solid #00bcd4;
-            padding: 10px;
-            margin: 0 10px 10px 10px;
-            background: #fafafa;
-        }
     </style>
 </head>
 <body>
 
 <header class="top-header">
-    <div class="brand">⠿ mozaïkportail <small>Élève</small></div>
-    <div>(En) Zhanyi ▼</div>
+    <div class="brand">
+        <span>⠿ mozaïkportail</span>
+        <small>Élève</small>
+    </div>
+    <div style="font-size: 12px;">(En) Zhanyi ▼</div>
 </header>
 
 <nav class="main-nav">
@@ -166,13 +210,13 @@
 </nav>
 
 <div class="sub-header">
-    <span>🏠 Accueil</span>
+    <span>🚌 Autobus</span>
     <span>📄 Bulletins</span>
 </div>
 
 <div class="main-container">
     
-    <!-- LEFT -->
+    <!-- COLONNE GAUCHE: HORAIRE -->
     <section>
         <div class="card">
             <div class="schedule-nav">
@@ -180,78 +224,123 @@
                 <div><strong>Mardi 17 mars</strong><br><small>Jour 2</small></div>
                 <span>▶</span>
             </div>
+            
             <div class="schedule-row">
                 <div class="time-col">09:15<br>10:30</div>
                 <div class="course-col"><strong>Musique sec.2</strong><span>Local 1401</span></div>
             </div>
+            
             <div class="schedule-row">
                 <div class="time-col">10:45<br>12:00</div>
                 <div class="course-col"><strong>Français sec.2</strong><span>Local 2052</span></div>
             </div>
+
             <div class="schedule-row">
                 <div class="time-col">13:10<br>14:25</div>
-                <div class="course-col"><strong>Edu Physique sec.2</strong><span>Local BLOC9</span></div>
+                <div class="course-col"><strong>Édu Physique sec.2</strong><span>Local BLOC9</span></div>
             </div>
+
             <div class="schedule-row">
                 <div class="time-col">14:40<br>15:55</div>
                 <div class="course-col"><strong>Mathématiques sec.2</strong><span>Local 3004</span></div>
             </div>
-            <div style="text-align: right; padding: 10px;"><a href="#" style="color:var(--m-blue); text-decoration:none; font-size:11px;">Voir en mode semaine ></a></div>
+
+            <div class="btn-view-week">
+                <a href="#">Voir en mode semaine ></a>
+            </div>
         </div>
 
-        <div class="links-list">
+        <div class="footer-links">
             <a href="#">Mes absences et retards ></a>
             <a href="#">Mon plan d'aide ></a>
-            <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
-                <strong>Télécharger l'horaire</strong><br>
-                <small>Dernière mise à jour: 10 septembre 2024</small>
+            <div style="margin-top: 15px; color: #444;">
+                <span style="font-weight: bold; color: var(--m-blue);">⬇ Télécharger l'horaire</span><br>
+                <small style="color: #999;">Dernière mise à jour : 30 septembre 2025</small>
             </div>
         </div>
     </section>
 
-    <!-- MIDDLE -->
+    <!-- COLONNE CENTRALE: MESSAGES -->
     <section>
         <div class="card">
             <div class="card-header">✉ Messages</div>
+            
             <div class="msg-block">
                 <div class="msg-meta">jeudi 12 mars 14:24</div>
                 <div class="msg-sender">Malika Larara</div>
                 <div class="msg-subject">Mathématiques sec.2</div>
                 <div class="msg-body">Sommets p. 216 # 2,3</div>
             </div>
+
             <div class="msg-block">
                 <div class="msg-meta">jeudi 22 janvier 09:28</div>
                 <div class="msg-sender">Malika Larara</div>
                 <div class="msg-subject">Mathématiques sec.2</div>
-                <div class="msg-body">Sommets p. 100 # 3, 4, 5<br>p. 101 à 103 # 6 à 9</div>
+                <div class="msg-body">
+                    Sommetsp. 100 # 3, 4, 5<br>
+                    p. 101 à 103 # 6 à 9
+                </div>
+            </div>
+
+            <div class="msg-block">
+                <div class="msg-meta">mercredi 14 janvier 14:20</div>
+                <div class="msg-sender">Malika Larara</div>
+                <div class="msg-subject">Mathématiques sec.2</div>
+                <div class="msg-body">Devoir sommets p. 90-91</div>
             </div>
         </div>
     </section>
 
-    <!-- RIGHT -->
+    <!-- COLONNE DROITE: RÉSULTATS & TRAVAUX -->
     <section>
         <div class="card">
             <div class="card-header">📊 Dernier résultat</div>
             <div class="result-content">
-                <div>Anglais, enrichi<br><small>Grammar test<br>27 février</small></div>
-                <div class="score">55/60<br><small>(92%)</small></div>
+                <div>
+                    <strong>Anglais, enrichi</strong><br>
+                    <small>Grammar test<br>27 février</small>
+                </div>
+                <div class="score">
+                    55/60<br><small>(92%)</small>
+                </div>
+            </div>
+            <div style="padding: 10px 15px; font-size: 11px; color: #999; border-top: 1px solid #f9f9f9;">
+                Pour voir plus de résultats, consulte la section Mes cours.
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">📅 Travaux de la semaine <span style="flex:1; text-align:right; font-weight:normal; font-size:11px;">Voir tout ></span></div>
-            <div class="info-box">
-                💡 Pour voir les travaux des autres semaines, cliquez sur « Voir tout ».
-                <br><br>
-                <span style="text-decoration:underline;">Ne plus afficher</span> <span style="float:right;">Fermer</span>
+            <div class="card-header">
+                <span>📋 Travaux de la semaine</span>
+                <span style="flex:1; text-align:right; font-size:11px; font-weight:normal;">Voir tout ></span>
             </div>
-            <div class="task-ribbon">Mercredi 18 mars</div>
-            <div class="task-card">
-                <strong>Anglais, enrichi</strong><br>
-                homework p. 185-186, 2...
+            
+            <div class="notice-box">
+                <span class="notice-close">×</span>
+                <div style="display:flex; gap:10px;">
+                    <span style="font-size:18px;">💡</span>
+                    <span>Pour voir les travaux des autres semaines, clique sur « Voir tout ».</span>
+                </div>
+                <div style="text-align: right; margin-top: 10px; font-weight: bold; color: var(--m-purple);">
+                    Ne plus afficher <span style="margin-left:15px; color: #444;">Fermer</span>
+                </div>
+            </div>
+
+            <div style="padding: 5px 15px; font-weight: bold; background: #eee; display: inline-block; border-radius: 0 15px 15px 0;">Mercredi 18 mars</div>
+            
+            <div class="task-row">
+                <div>
+                    <strong>Anglais, enrichi</strong><br>
+                    homework p. 185-186, 2...
+                </div>
+                <div style="text-align: right;">
+                    <small style="color: #999;">Fait</small><br>
+                    <input type="checkbox">
+                </div>
             </div>
         </div>
     </section>
+
 </div>
 
 </body>
