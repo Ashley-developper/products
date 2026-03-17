@@ -1,97 +1,100 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion - Mozaïk-Portail</title>
+    <title>学校门户</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
             margin: 0;
         }
-        .login-container {
+        .container {
+            display: flex;
+            max-width: 1200px;
+            margin: auto;
             background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
+            border: 1px solid #ddd;
+        }
+        .sidebar, .main {
+            padding: 15px;
+        }
+        .sidebar {
+            flex: 1;
+            background: #e8f0fe;
+        }
+        .main {
+            flex: 2;
+            background: #ffffff;
+        }
+        .header {
+            background: #0056b3;
+            color: white;
+            padding: 10px;
             text-align: center;
         }
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #005494; /* Mozaik 蓝色 */
+        .section {
             margin-bottom: 20px;
-            display: block;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
-        .logo span {
-            color: #e30613; /* 红色装饰点缀 */
+        .section h2 {
+            margin: 0;
+            font-size: 1.2em;
         }
-        h1 {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 30px;
-        }
-        .input-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        input[type="email"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            margin-top: 5px;
-        }
-        .btn-submit {
-            background-color: #005494;
+        .button {
+            background-color: #0056b3;
             color: white;
             border: none;
-            padding: 12px;
-            width: 100%;
-            border-radius: 4px;
+            padding: 10px;
             cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
-        }
-        .btn-submit:hover {
-            background-color: #003d6b;
-        }
-        .footer-links {
-            margin-top: 20px;
-            font-size: 13px;
-        }
-        .footer-links a {
-            color: #005494;
-            text-decoration: none;
         }
     </style>
 </head>
 <body>
 
-<div class="login-container">
-    <div class="logo">Mozaïk<span>-Portail</span></div>
-    <h1>Bienvenue au service d'authentification</h1>
-    
-    <form action="#">
-        <div class="input-group">
-            <label for="email">Courriel</label>
-            <input type="email" id="email" placeholder="nom@exemple.com" required>
-        </div>
-        
-        <button type="submit" class="btn-submit">Suivant</button>
-    </form>
+<div class="header">
+    <h1>mozaïkportail</h1>
+    <p>Élève</p>
+</div>
 
-    <div class="footer-links">
-        <p><a href="#">Besoin d'aide ?</a></p>
-        <p><a href="https://info.mozaikportail.ca/en/guide/">Consulter le guide d'utilisation</a></p>
+<div class="container">
+    <div class="sidebar">
+        <div class="section">
+            <h2>Ma vie scolaire</h2>
+            <p><strong>Mardi 17 mars</strong></p>
+            <p>09:15 Musique sec.2 - Local 1401</p>
+            <p>10:30 Français sec.2 - Local 2062</p>
+            <p>12:00 Édu Physique sec.2 - Local BLC09</p>
+            <p>14:40 Mathématiques sec.2 - Local 3004</p>
+            <button class="button">Voir en mode semaine</button>
+            <p>Mes absences et retards</p>
+            <p>Mon d'aide</p>
+            <button class="button">Télécharger l'horaire</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="section">
+            <h2>Messages</h2>
+            <p>Malika Larara</p>
+            <p>Mathématiques sec.2 - Sommetsp. p.216#2,3</p>
+            <p>Jeudi 12 mars 14:24</p>
+        </div>
+        <div class="section">
+            <h2>Dernier résultat</h2>
+            <p>Anglais, enrichi</p>
+            <p>Grammar test 56/60 (92%)</p>
+            <p>27 février</p>
+        </div>
+        <div class="section">
+            <h2>Travaux de la semaine</h2>
+            <p>Anglais, enrichi</p>
+            <p>Homework p. 185-186, 2</p>
+            <button class="button">Voir tout</button>
+        </div>
     </div>
 </div>
 
